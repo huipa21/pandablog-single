@@ -25,7 +25,6 @@ tests
 storage/uploads
 storage/variants
 storage/downloads
-storage/geoip
 storage/backups
 storage/logs
 Dockerfile

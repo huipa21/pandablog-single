@@ -104,7 +104,7 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real current-account se
       vi.stubGlobal('setCookie', (_event: unknown, name: string, value: string) => {cookieJar.set(name, value)})
       vi.stubGlobal('getCookie', (_event: unknown, name: string) => cookieJar.get(name))
       vi.stubGlobal('deleteCookie', (_event: unknown, name: string) => {cookieJar.delete(name)})
-      const context = {userAgent: 'fixture', uaHash: 'fixture', ip: null, ipPrefix: null, country: null}
+      const context = {userAgent: 'fixture', uaHash: 'fixture', ip: null, ipPrefix: null}
       const event = {context: {}, node: {req: Object.assign(new EventEmitter(), {aborted: false}), res: Object.assign(new EventEmitter(), {destroyed: false})}} as never
       const device = await issueTrustedDevice(event, created.id, context, epoch)
       expect(await findMatchingTrustedDevice(event, created.id)).not.toBeNull()

@@ -15,6 +15,16 @@ REMOVE FIELD IF EXISTS is_featured ON post;
 REMOVE FIELD IF EXISTS featured_at ON post;
 REMOVE INDEX IF EXISTS post_content_fts ON post;
 REMOVE TABLE IF EXISTS logging_settings;
+REMOVE TABLE IF EXISTS analytics_daily_geo;
+REMOVE INDEX IF EXISTS pageview_country ON pageview;
+REMOVE FIELD IF EXISTS country ON pageview;
+REMOVE FIELD IF EXISTS region ON pageview;
+REMOVE FIELD IF EXISTS city ON pageview;
+REMOVE FIELD IF EXISTS country ON analytics_session;
+REMOVE FIELD IF EXISTS region ON analytics_session;
+REMOVE FIELD IF EXISTS city ON analytics_session;
+REMOVE FIELD IF EXISTS geo_truncated ON analytics_daily;
+REMOVE FIELD IF EXISTS country ON trusted_devices;
 
 -- ============ ANALYZER ============
 -- Multilingual full-text search (English + CJK: Simplified/Traditional Chinese, Japanese).
@@ -56,7 +66,6 @@ DEFINE FIELD IF NOT EXISTS user_agent ON trusted_devices TYPE option<string> DEF
 DEFINE FIELD IF NOT EXISTS ua_hash ON trusted_devices TYPE string;
 DEFINE FIELD IF NOT EXISTS ip ON trusted_devices TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS ip_prefix ON trusted_devices TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS country ON trusted_devices TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS created_at ON trusted_devices TYPE datetime DEFAULT time::now();
 DEFINE FIELD IF NOT EXISTS last_used_at ON trusted_devices TYPE datetime DEFAULT time::now();
 DEFINE FIELD IF NOT EXISTS expires_at ON trusted_devices TYPE datetime;
@@ -250,9 +259,6 @@ DEFINE FIELD IF NOT EXISTS updated_at ON media_smart_folder TYPE datetime DEFAUL
 -- ============ ANALYTICS ============
 DEFINE TABLE OVERWRITE analytics_session SCHEMAFULL PERMISSIONS NONE;
 DEFINE FIELD IF NOT EXISTS visitor_hash ON analytics_session TYPE string;
-DEFINE FIELD IF NOT EXISTS country ON analytics_session TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS region ON analytics_session TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS city ON analytics_session TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS pageview_count ON analytics_session TYPE int DEFAULT 0;
 DEFINE FIELD IF NOT EXISTS started_at ON analytics_session TYPE datetime DEFAULT time::now();
 DEFINE FIELD IF NOT EXISTS last_seen_at ON analytics_session TYPE datetime DEFAULT time::now();
@@ -276,13 +282,9 @@ DEFINE FIELD IF NOT EXISTS path ON pageview TYPE string;
 DEFINE FIELD IF NOT EXISTS referrer ON pageview TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS visitor_hash ON pageview TYPE string;
 DEFINE FIELD IF NOT EXISTS session ON pageview TYPE option<record<analytics_session>> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS country ON pageview TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS region ON pageview TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS city ON pageview TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS created_at ON pageview TYPE datetime DEFAULT time::now();
 DEFINE INDEX IF NOT EXISTS pageview_created_at ON pageview FIELDS created_at;
 DEFINE INDEX IF NOT EXISTS pageview_path ON pageview FIELDS path;
-DEFINE INDEX IF NOT EXISTS pageview_country ON pageview FIELDS country;
 DEFINE INDEX IF NOT EXISTS pageview_visitor_hash ON pageview FIELDS visitor_hash;
 DEFINE INDEX IF NOT EXISTS pageview_session ON pageview FIELDS session;
 
@@ -300,7 +302,6 @@ DEFINE FIELD IF NOT EXISTS published ON analytics_daily TYPE bool DEFAULT false;
 DEFINE FIELD IF NOT EXISTS finalized ON analytics_daily TYPE bool DEFAULT false;
 DEFINE FIELD IF NOT EXISTS publication_epoch ON analytics_daily TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS pages_truncated ON analytics_daily TYPE bool DEFAULT false;
-DEFINE FIELD IF NOT EXISTS geo_truncated ON analytics_daily TYPE bool DEFAULT false;
 DEFINE INDEX IF NOT EXISTS analytics_daily_date_unique ON TABLE analytics_daily COLUMNS date UNIQUE;
 
 DEFINE TABLE OVERWRITE analytics_daily_page SCHEMAFULL PERMISSIONS NONE;
@@ -311,16 +312,6 @@ DEFINE FIELD IF NOT EXISTS rolled_up_at ON analytics_daily_page TYPE datetime DE
 DEFINE INDEX IF NOT EXISTS analytics_daily_page_date ON analytics_daily_page FIELDS date;
 DEFINE INDEX IF NOT EXISTS analytics_daily_page_path ON analytics_daily_page FIELDS path;
 DEFINE INDEX IF NOT EXISTS analytics_daily_page_unique ON TABLE analytics_daily_page COLUMNS date, path UNIQUE;
-
-DEFINE TABLE OVERWRITE analytics_daily_geo SCHEMAFULL PERMISSIONS NONE;
-DEFINE FIELD IF NOT EXISTS date ON analytics_daily_geo TYPE string;
-DEFINE FIELD IF NOT EXISTS country ON analytics_daily_geo TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS region ON analytics_daily_geo TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS city ON analytics_daily_geo TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS views ON analytics_daily_geo TYPE int DEFAULT 0;
-DEFINE FIELD IF NOT EXISTS rolled_up_at ON analytics_daily_geo TYPE datetime DEFAULT time::now();
-DEFINE INDEX IF NOT EXISTS analytics_daily_geo_date ON analytics_daily_geo FIELDS date;
-DEFINE INDEX IF NOT EXISTS analytics_daily_geo_country ON analytics_daily_geo FIELDS country;
 -- #module analytics end
 
 -- #module logs start

@@ -1,6 +1,5 @@
 const ANALYTICS_TABLES = [
   'analytics_daily',
-  'analytics_daily_geo',
   'analytics_daily_page',
   'analytics_session',
   'pageview'

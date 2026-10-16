@@ -24,8 +24,8 @@
       </div>
     </header>
 
-    <UAlert v-if="error || topPagesError || geoError" color="error" icon="i-lucide-circle-alert" :title="t('admin.analytics.loadFailed')" />
-    <UAlert v-if="overview?.partial || topPagesData?.partial || topPagesData?.truncated || geoData?.partial || geoData?.truncated" color="warning" icon="i-lucide-triangle-alert" :title="t('admin.analytics.partialResults')" />
+    <UAlert v-if="error || topPagesError" color="error" icon="i-lucide-circle-alert" :title="t('admin.analytics.loadFailed')" />
+    <UAlert v-if="overview?.partial || topPagesData?.partial || topPagesData?.truncated" color="warning" icon="i-lucide-triangle-alert" :title="t('admin.analytics.partialResults')" />
 
     <div
       v-if="analyticsDisabled"
@@ -99,55 +99,6 @@
         </div>
       </section>
     </div>
-
-    <section class="pb-admin-surface p-5">
-      <div class="mb-4 flex flex-col gap-1">
-        <h2 class="text-lg font-semibold text-[var(--pb-text)]">{{ t('admin.analytics.geoDistribution') }}</h2>
-        <p class="text-sm text-[var(--pb-text-muted)]">{{ t('admin.analytics.geoDescription') }}</p>
-      </div>
-
-      <div
-        v-if="!geoPending && geoDatabaseMissing"
-        class="mb-4 flex items-start gap-3 rounded-[var(--pb-radius-card-inner)] border border-amber-300/70 bg-amber-50 p-3 text-sm dark:border-amber-500/40 dark:bg-amber-500/10"
-      >
-        <UIcon name="i-lucide-database-zap" class="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
-        <div class="min-w-0">
-          <p class="font-semibold text-amber-800 dark:text-amber-200">{{ t('admin.analytics.geoDbMissingTitle') }}</p>
-          <p class="mt-0.5 text-amber-700 dark:text-amber-300">{{ t('admin.analytics.geoDbMissingBody') }}</p>
-          <code class="mt-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 font-mono text-xs text-amber-900 dark:bg-amber-500/20 dark:text-amber-100">storage/geoip/dbip-city-lite.mmdb</code>
-        </div>
-      </div>
-
-      <div v-if="geoPending" class="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
-        <USkeleton class="h-80" />
-        <div class="grid gap-3">
-          <USkeleton v-for="index in 6" :key="index" class="h-14" />
-        </div>
-      </div>
-      <div v-else class="grid gap-4" :class="topLocations.length ? 'xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]' : ''">
-        <AdminAnalyticsGeoMap
-          :locations="locations"
-          :ariaLabel="t('admin.analytics.geoMapLabel')"
-          :empty-label="t('admin.analytics.emptyGeoMap')"
-          :less-label="t('admin.analytics.lessTraffic')"
-          :more-label="t('admin.analytics.moreTraffic')"
-        />
-        <div v-if="topLocations.length" class="grid content-start gap-3">
-          <h3 class="text-sm font-semibold text-[var(--pb-text)]">{{ t('admin.analytics.topLocations') }}</h3>
-          <div v-for="location in topLocations" :key="location.key" class="rounded-[var(--pb-radius-card-inner)] border border-[var(--pb-divider)] p-3">
-            <div class="flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-[var(--pb-text)]">{{ location.label }}</p>
-                <p class="text-xs text-[var(--pb-text-muted)]">{{ location.country }}</p>
-              </div>
-              <UBadge color="primary" variant="soft">{{ formatNumber(location.views) }}</UBadge>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <p class="mt-4 text-xs text-[var(--pb-text-muted)]">{{ t('admin.analytics.geoAttribution') }}</p>
-    </section>
   </section>
 </template>
 
@@ -165,6 +116,7 @@ interface AnalyticsQuery {
 
 interface AnalyticsOverview {
   partial: boolean
+  analyticsEnabled: boolean
   scorecards: {
     pageViews: number
     uniqueVisitors: number
@@ -180,14 +132,6 @@ interface TopPagesResponse {
   partial: boolean
   truncated: boolean
   pages: Array<{ path: string, views: number }>
-}
-
-interface GeoResponse {
-  partial: boolean
-  truncated: boolean
-  locations: Array<{ country: string, region: string, city: string, views: number }>
-  databaseAvailable: boolean
-  analyticsEnabled: boolean
 }
 
 const { t, locale } = useI18n()
@@ -229,11 +173,6 @@ const { data: topPagesData, pending: topPagesPending, error: topPagesError, refr
   () => sessionFetch<TopPagesResponse>('/api/admin/analytics/top-pages', { query: { ...analyticsQuery.value, limit: 8 } }),
   { watch: [range] }
 )
-const { data: geoData, pending: geoPending, error: geoError, refresh: refreshGeo } = await useAsyncData(
-  'admin-analytics-geo',
-  () => sessionFetch<GeoResponse>('/api/admin/analytics/geo', { query: { ...analyticsQuery.value, limit: 50 } }),
-  { watch: [range] }
-)
 
 const pending = computed(() => overviewPending.value || topPagesPending.value)
 const numberFormatter = computed(() => new Intl.NumberFormat(locale.value))
@@ -261,17 +200,7 @@ const topPages = computed(() => {
   const maxViews = Math.max(1, ...pages.map(page => page.views))
   return pages.map(page => ({ ...page, percent: Math.max(4, Math.round((page.views / maxViews) * 100)) }))
 })
-const locations = computed(() => (geoData.value?.locations ?? []).map((location) => {
-  const parts = [location.city, location.region].filter(Boolean)
-  return {
-    ...location,
-    key: [location.country, location.region, location.city].join(':'),
-    label: parts.length ? parts.join(', ') : location.country
-  }
-}))
-const topLocations = computed(() => locations.value.slice(0, 10))
-const geoDatabaseMissing = computed(() => geoData.value?.databaseAvailable === false)
-const analyticsDisabled = computed(() => geoData.value?.analyticsEnabled === false)
+const analyticsDisabled = computed(() => overview.value?.analyticsEnabled === false)
 
 function formatNumber(value: number) {
   return numberFormatter.value.format(value)
@@ -288,7 +217,7 @@ function formatDuration(seconds: number) {
 }
 
 async function refreshAll() {
-  await Promise.all([refreshOverview(), refreshTopPages(), refreshGeo()])
+  await Promise.all([refreshOverview(), refreshTopPages()])
 }
 
 function selectRange(value: RangeOption) {

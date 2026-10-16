@@ -25,13 +25,6 @@ services:
       - 3000
     volumes:
       - ./app-storage:/app/storage
-      # GeoIP analytics database (optional). Place the DB-IP City Lite MMDB at
-      # ./app-storage/geoip/dbip-city-lite.mmdb on the host. Because the whole
-      # storage dir is bind-mounted, it will be visible inside the container at
-      # /app/storage/geoip/dbip-city-lite.mmdb (the default GEOIP_DB_PATH).
-      # The app creates ./app-storage/geoip/ automatically on boot; drop the
-      # .mmdb there and restart this service. Until then the admin Analytics
-      # page shows a "GeoIP database not loaded" notice and the world map is empty.
     networks:
       - nginx
     healthcheck:

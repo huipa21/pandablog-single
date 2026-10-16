@@ -18,7 +18,6 @@ export interface TrustedDeviceContext {
   uaHash: string
   ip: string | null
   ipPrefix: string | null
-  country: string | null
 }
 
 export interface TrustedDeviceRecord {
@@ -31,7 +30,6 @@ export interface TrustedDeviceRecord {
   uaHash: string
   ip: string | null
   ipPrefix: string | null
-  country: string | null
   createdAt: string
   lastUsedAt: string
   expiresAt: string
@@ -43,7 +41,6 @@ export interface TrustedDeviceListItem {
   userAgent: string | null
   ip: string | null
   ipPrefix: string | null
-  country: string | null
   createdAt: string
   lastUsedAt: string
   expiresAt: string
@@ -60,7 +57,6 @@ interface TrustedDeviceRow {
   ua_hash?: unknown
   ip?: unknown
   ip_prefix?: unknown
-  country?: unknown
   created_at?: unknown
   last_used_at?: unknown
   expires_at?: unknown
@@ -122,7 +118,6 @@ function mapTrustedDeviceRow(row: TrustedDeviceRow): TrustedDeviceRecord | null 
     uaHash,
     ip: optionalString(row.ip),
     ipPrefix: optionalString(row.ip_prefix),
-    country: optionalString(row.country),
     createdAt: serializeDate(row.created_at),
     lastUsedAt: serializeDate(row.last_used_at),
     expiresAt
@@ -209,16 +204,12 @@ export async function resolveTrustedDeviceContext(event: H3Event): Promise<Trust
   const runtimeFlags = getRuntimeFlags()
   const ip = getRequestIP(event, { xForwardedFor: runtimeFlags.trust_proxy_headers }) ?? null
   const userAgent = getHeader(event, 'user-agent')?.slice(0, 512) || null
-  const geo: { country?: unknown } = ip
-    ? await import('../analytics/geo').then(module => module.lookupAnalyticsGeo(ip)).catch(() => ({}))
-    : {}
 
   return {
     userAgent,
     uaHash: hashString(userAgent ?? ''),
     ip,
-    ipPrefix: trustedDeviceIpPrefix(ip),
-    country: typeof geo.country === 'string' && geo.country ? geo.country : null
+    ipPrefix: trustedDeviceIpPrefix(ip)
   }
 }
 
@@ -227,15 +218,11 @@ export function trustedDeviceContextMatches(device: TrustedDeviceRecord, context
     return false
   }
 
-  if (device.country && context.country) {
-    return device.country === context.country
-  }
-
   if (device.ipPrefix && context.ipPrefix) {
     return device.ipPrefix === context.ipPrefix
   }
 
-  return !device.country && !context.country && !device.ipPrefix && !context.ipPrefix
+  return !device.ipPrefix && !context.ipPrefix
 }
 
 export async function findMatchingTrustedDevice(event: H3Event, idOrUserRecord: string): Promise<TrustedDeviceRecord | null> {
@@ -289,7 +276,6 @@ export async function issueTrustedDevice(
       ua_hash: $uaHash,
       ip: (IF $ip != NONE AND $ip != '' THEN $ip ELSE NONE END),
       ip_prefix: (IF $ipPrefix != NONE AND $ipPrefix != '' THEN $ipPrefix ELSE NONE END),
-      country: (IF $country != NONE AND $country != '' THEN $country ELSE NONE END),
       created_at: time::now(),
       last_used_at: time::now(),
       expires_at: $expiresAt
@@ -304,7 +290,6 @@ export async function issueTrustedDevice(
       uaHash: deviceContext.uaHash,
       ip: deviceContext.ip ?? '',
       ipPrefix: deviceContext.ipPrefix ?? '',
-      country: deviceContext.country ?? '',
       expiresAt: trustedDeviceExpiry()
     }
   )
@@ -338,8 +323,7 @@ export async function refreshTrustedDevice(
       user_agent: (IF $rebind AND $userAgent != NONE AND $userAgent != '' THEN $userAgent ELSE user_agent END),
       ua_hash: (IF $rebind THEN $uaHash ELSE ua_hash END),
       ip: (IF $rebind AND $ip != NONE AND $ip != '' THEN $ip ELSE ip END),
-      ip_prefix: (IF $rebind AND $ipPrefix != NONE AND $ipPrefix != '' THEN $ipPrefix ELSE ip_prefix END),
-      country: (IF $rebind AND $country != NONE AND $country != '' THEN $country ELSE country END)
+      ip_prefix: (IF $rebind AND $ipPrefix != NONE AND $ipPrefix != '' THEN $ipPrefix ELSE ip_prefix END)
     } WHERE auth_epoch = $authEpoch AND auth_epoch = user.auth_epoch AND user.active = true RETURN AFTER;`,
     {
       table: TRUSTED_DEVICES_TABLE,
@@ -351,8 +335,7 @@ export async function refreshTrustedDevice(
       userAgent: context.userAgent ?? '',
       uaHash: context.uaHash,
       ip: context.ip ?? '',
-      ipPrefix: context.ipPrefix ?? '',
-      country: context.country ?? ''
+      ipPrefix: context.ipPrefix ?? ''
     }
   )
   if (!queryRows(refreshed).length) { clearTrustedDeviceCookie(event); throw createError({statusCode: 401, message: 'Trusted device revoked'}) }
@@ -389,7 +372,6 @@ export async function listTrustedDevices(event: H3Event, idOrUserRecord: string)
       userAgent: device.userAgent,
       ip: device.ip,
       ipPrefix: device.ipPrefix,
-      country: device.country,
       createdAt: device.createdAt,
       lastUsedAt: device.lastUsedAt,
       expiresAt: device.expiresAt,

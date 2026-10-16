@@ -2,7 +2,6 @@ import { writeBarrier } from '../utils/maintenance'
 import { cleanupAnalyticsRetention, rollupCompletedAnalyticsDays, shutdownAnalyticsMaintenance } from '../utils/analytics/rollup'
 import { shutdownAnalyticsTracking } from '../utils/analytics/session'
 import { analyticsReady } from '../utils/analytics/lifecycle'
-import { ensureAnalyticsGeoDir } from '../utils/analytics/geo'
 
 export default defineNitroPlugin((nitro) => {
   let running: Promise<void> | undefined, lastCompletedDate = '', stopped = false
@@ -12,7 +11,6 @@ export default defineNitroPlugin((nitro) => {
     if (stopped || running || !analyticsReady() || writeBarrier.status().closed || lastCompletedDate === date) return
     running = writeBarrier.run(async () => {
       try {
-        await ensureAnalyticsGeoDir()
         const result = await rollupCompletedAnalyticsDays(now, abort.signal)
         const reports = await cleanupAnalyticsRetention(now, abort.signal)
         if (result.completed && Object.values(reports).every(report => report.completed)) lastCompletedDate = date

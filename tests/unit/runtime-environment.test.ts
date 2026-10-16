@@ -19,7 +19,7 @@ assert.equal(config.runtimeConfig.public.footerShowPoweredBy, process.argv[4] ==
 assert.equal('appSponsor' in config.runtimeConfig.public, false);
 assert.equal(Object.keys(config.runtimeConfig.public).some(key => /password|surreal|secret/i.test(key)), false);
 if (process.argv[3] === '') {
-  for (const [key, value] of Object.entries({surrealUrl:'ws://127.0.0.1:8000/rpc', surrealNamespace:'main', surrealDatabase:'main', surrealRoot:'root', surrealRootPassword:'', surrealAppUser:'', appOrigin:'', mfaSecret:'', geoipDbPath:'storage/geoip/dbip-city-lite.mmdb'})) assert.equal(config.runtimeConfig[key], value);
+  for (const [key, value] of Object.entries({surrealUrl:'ws://127.0.0.1:8000/rpc', surrealNamespace:'main', surrealDatabase:'main', surrealRoot:'root', surrealRootPassword:'', surrealAppUser:'', appOrigin:'', mfaSecret:''})) assert.equal(config.runtimeConfig[key], value);
 }`)
       for (const scenario of [
         {file: 'NUXT_SURREAL_APP_PASSWORD=canonical-file\nNUXT_PUBLIC_FOOTER_SHOW_POWERED_BY=on', env: {}, expected: 'canonical-file', footer: 'true'},

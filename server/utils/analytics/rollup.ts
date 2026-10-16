@@ -54,7 +54,7 @@ export function rollupCompletedAnalyticsDays(now = new Date(), signal?: AbortSig
 }
 
 /** A bounded per-day transaction is the publication boundary. A failed rewrite
- * leaves all previous totals/page/geo rows visible, with no staging generation.
+ * leaves all previous totals/page rows visible, with no staging generation.
  * Legacy days exceeding the replacement budget refuse, preserving their data.
  */
 export async function rollupAnalyticsDay(db: Surreal, dayStart: Date, checkpoint = false, asOf = new Date()) {
@@ -68,33 +68,21 @@ export async function rollupAnalyticsDay(db: Surreal, dayStart: Date, checkpoint
     LET $pages = (SELECT path, count() AS views FROM pageview WITH NOINDEX
       WHERE created_at >= $dayStart AND created_at < $dayEnd AND string::len(path) <= 2048
       GROUP BY path ORDER BY views DESC, path LIMIT 1001 TIMEOUT 10s);
-    LET $geo = (SELECT country, region, city, count() AS views FROM pageview WITH NOINDEX
-      WHERE created_at >= $dayStart AND created_at < $dayEnd AND country != NONE
-      AND string::len(country) <= 256 AND (region = NONE OR string::len(region) <= 256) AND (city = NONE OR string::len(city) <= 256)
-      GROUP BY country, region, city ORDER BY views DESC, country, region, city LIMIT 1001 TIMEOUT 10s);
     LET $oldPages = (SELECT count() AS n FROM analytics_daily_page WHERE date = $date GROUP ALL TIMEOUT 10s);
-    LET $oldGeo = (SELECT count() AS n FROM analytics_daily_geo WHERE date = $date GROUP ALL TIMEOUT 10s);
-    IF ($oldPages[0].n ?? 0) > 1000 OR ($oldGeo[0].n ?? 0) > 1000 { THROW 'Legacy analytics day exceeds atomic replacement budget; approved offline repair required'; };
+    IF ($oldPages[0].n ?? 0) > 1000 { THROW 'Legacy analytics day exceeds atomic replacement budget; approved offline repair required'; };
     LET $keptPages = array::slice($pages, 0, 1000);
-    LET $keptGeo = array::slice($geo, 0, 1000);
     LET $pageIds = $keptPages.map(|$row| type::record('analytics_daily_page', crypto::sha256(type::string([$date, $row.path]))));
-    LET $geoIds = $keptGeo.map(|$row| type::record('analytics_daily_geo', crypto::sha256(type::string([$date, $row.country, $row.region, $row.city]))));
     DELETE analytics_daily_page WHERE date = $date AND id NOT IN $pageIds RETURN NONE;
-    DELETE analytics_daily_geo WHERE date = $date AND id NOT IN $geoIds RETURN NONE;
     FOR $row IN $keptPages {
       UPSERT type::record('analytics_daily_page', crypto::sha256(type::string([$date, $row.path]))) CONTENT {date: $date, path: $row.path, views: $row.views, rolled_up_at: time::now()} RETURN NONE;
     };
-    FOR $row IN $keptGeo {
-      UPSERT type::record('analytics_daily_geo', crypto::sha256(type::string([$date, $row.country, $row.region, $row.city]))) CONTENT {date: $date, country: $row.country, region: $row.region, city: $row.city, views: $row.views, rolled_up_at: time::now()} RETURN NONE;
-    };
     LET $checkPages = (SELECT count() AS n, math::sum(views) AS views FROM analytics_daily_page WHERE date = $date GROUP ALL);
-    LET $checkGeo = (SELECT count() AS n FROM analytics_daily_geo WHERE date = $date GROUP ALL);
-    IF ($checkPages[0].n ?? 0) != array::len($keptPages) OR ($checkGeo[0].n ?? 0) != array::len($keptGeo) { THROW 'Analytics summary verification failed'; };
+    IF ($checkPages[0].n ?? 0) != array::len($keptPages) { THROW 'Analytics summary verification failed'; };
     UPSERT type::record('analytics_daily', $date) CONTENT {
       date: $date, page_views: $totals.page_views, unique_visitors: $totals.unique_visitors,
       sessions: $totals.sessions, bounce_sessions: $totals.bounce_sessions, total_visit_seconds: $totals.total_visit_seconds,
       pages_truncated: array::len($pages) > 1000 OR ($checkPages[0].views ?? 0) < $totals.page_views,
-      geo_truncated: array::len($geo) > 1000, published: true, finalized: ($open[0].n ?? 0) = 0,
+      published: true, finalized: ($open[0].n ?? 0) = 0,
       publication_epoch: $publication.epoch, rolled_up_at: time::now()
     } RETURN NONE;
     IF $checkpoint {

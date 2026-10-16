@@ -1,7 +1,6 @@
 import { getRequestHeader, getRequestIP, setResponseStatus } from 'h3'
 import { readBoundedJson } from '../../utils/bounded-json'
 import { isAnalyticsBot } from '../../utils/analytics/bots'
-import { lookupAnalyticsGeo } from '../../utils/analytics/geo'
 import { hashAnalyticsVisitor } from '../../utils/analytics/hash'
 import { normalizeAnalyticsPath, normalizeAnalyticsReferrer } from '../../utils/analytics/path'
 import { recordAnalyticsPageview } from '../../utils/analytics/session'
@@ -68,9 +67,8 @@ export default defineEventHandler(async (event) => {
 
     const now = new Date()
     const visitorHash = await hashAnalyticsVisitor(ip, userAgent)
-    const geo = await lookupAnalyticsGeo(ip)
     const referrer = normalizeAnalyticsReferrer(body.referrer ?? getRequestHeader(event, 'referer'))
-    await recordAnalyticsPageview(db, visitorHash, geo, now, settings.analytics_session_window_minutes, {path, referrer})
+    await recordAnalyticsPageview(db, visitorHash, now, settings.analytics_session_window_minutes, {path, referrer})
 
   } catch (error) {
     if (import.meta.dev) {

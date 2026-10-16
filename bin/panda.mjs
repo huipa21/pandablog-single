@@ -31,7 +31,6 @@ const STORAGE_DIRS = [
   'variants',
   'downloads',
   'backups',
-  'geoip',
   'logs',
   'rate-limit'
 ]

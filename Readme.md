@@ -55,7 +55,7 @@ managing media, and configuring your site — all backed by SurrealDB.
   dedicated tokenization for English plus Simplified/Traditional Chinese and Japanese.
 - **Relationship graph** — explore posts by category, tag, and explicit post-to-post links.
 - **Post versioning** — automatic content snapshots with diff and restore.
-- **Analytics** — pageview/session metrics with optional city-level GeoIP lookups.
+- **Analytics** — privacy-friendly pageview/session metrics (no IP geolocation).
 - **Logging** — configurable activity and grouped error logs with export and DB retention; HTTP access logs belong to the reverse proxy.
 - **Backups** — full and incremental snapshots of the database and media, with import/export.
 - **Themes** — deployment-managed themes with preview, activation, and light/dark design tokens.
@@ -175,7 +175,6 @@ NUXT_SESSION_PASSWORD="replace-with-a-32-plus-character-random-string"
 | `NUXT_SURREAL_APP_USER` | Required DATABASE-scoped EDITOR runtime user (see [Scoped database user](#scoped-database-user)) | Yes, dev and production |
 | `NUXT_SURREAL_APP_PASSWORD` | Separate runtime password; no ROOT fallback | Yes, dev and production |
 | `NUXT_MFA_SECRET` | Optional dedicated TOTP encryption key; falls back to `NUXT_SESSION_PASSWORD` | No |
-| `NUXT_GEOIP_DB_PATH` | Path to a MaxMind-compatible `.mmdb` file | No |
 | `NUXT_PUBLIC_FOOTER_SHOW_POWERED_BY` | Show “Powered by PandaBlog” GitHub attribution; default false | No |
 | `NODE_OPTIONS` | Node process options; root example sets `--max-old-space-size=4096` | No |
 | `E2E_ADMIN_USERNAME` | Existing app-admin username for authenticated Playwright tests | Tests only |
@@ -189,19 +188,6 @@ launch does not resize the current process heap.
 > config from `NUXT_`-prefixed variables (for example `NUXT_SURREAL_URL`,
 > `NUXT_SURREAL_ROOT_PASSWORD`, `NUXT_MFA_SECRET`). A ready-to-edit production template lives at
 > [deploy/production/.env.example](deploy/production/.env.example).
-
-### Optional analytics GeoIP database
-
-City-level analytics use a local MaxMind-compatible `.mmdb` file (not a database table). Download
-a city-level database in MMDB format and place it at:
-
-```text
-storage/geoip/dbip-city-lite.mmdb
-```
-
-To use a different location, set `NUXT_GEOIP_DB_PATH` in either environment. Until a
-database is present, the Analytics page shows a "GeoIP database not loaded" notice and the world
-map is empty.
 
 ---
 
@@ -342,7 +328,6 @@ admin, without rebuilding:
 | Feature | Where to control it | Default |
 | --- | --- | --- |
 | Analytics collection | Settings → Analytics | Off |
-| GeoIP for analytics | Place `dbip-city-lite.mmdb` at `NUXT_GEOIP_DB_PATH` | Off until the file exists |
 | Security alerts | Settings → Security | Off |
 | Require MFA for admins | Settings → Security | Off |
 | Activity / error logging and retention | Dashboard → Logs → Settings | On |
@@ -512,7 +497,7 @@ Cloudflare). In production it emits HSTS and other security headers, and session
 
 The app derives each request's client IP from `X-Forwarded-For` when the `trust_proxy_headers`
 setting is enabled (default). This IP drives login rate limiting and lockout, public rate limits,
-password-unlock throttling and analytics GeoIP lookups. HTTP access logging is managed by the reverse proxy.
+password-unlock throttling, analytics visitor hashing and MFA trusted-device IP-range matching. HTTP access logging is managed by the reverse proxy.
 
 > **Important:** only keep `trust_proxy_headers` enabled when a **trusted** reverse proxy sits in
 > front of the app and **overwrites** `X-Forwarded-For` with the real client IP. If the app is
@@ -668,8 +653,8 @@ Notes:
   ```
 
 - Keep real secrets in the runtime `.env`; never bake them into the image.
-- Bind-mount or use a volume for `/app/storage` so uploads, variants, backups, and the GeoIP
-  database persist across restarts.
+- Bind-mount or use a volume for `/app/storage` so uploads, variants and backups
+  persist across restarts.
 - First deployment still requires opening `/admin` once to complete setup.
 
 ### Backend hardening release handoff

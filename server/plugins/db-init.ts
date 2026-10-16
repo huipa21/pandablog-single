@@ -5,6 +5,7 @@ import { mediaInitializeLegacyState, mediaRecoverInterruptedObjects } from '../u
 import { mediaRecoverStageDirectories } from '../utils/media-upload'
 import { setupAuthority } from '../utils/setup-authority'
 import { ensureAuthEpochs } from '../utils/auth-epoch-migration'
+import { removeLegacyGeoFields } from '../utils/geoip-removal-migration'
 import { collapseToSingleOwner } from '../utils/single-owner-migration'
 import { applySchema, loadSchema, SCHEMA_HASH_KEY } from '../utils/schema'
 import { assertMediaStorageCompatible, ensureMediaStorageVersion } from '../utils/media-storage-migration'
@@ -37,6 +38,7 @@ const POST_STATS_BACKFILL_KEY = '__post_stats_backfill_v2'
 const BLOCK_TEXT_REINDEX_KEY = '__block_text_reindex_v3'
 const SEARCH_TERMS_BUILD_KEY = '__search_terms_build_v1'
 const TAXONOMY_EDGE_REPAIR_KEY = '__taxonomy_edge_repair_v1'
+const GEOIP_REMOVAL_MIGRATION_KEY = '__geoip_removal_migration_v1'
 const APP_SETTINGS_TABLE = 'app_settings'
 const LEGACY_APP_SETTINGS_TABLE = `app_${'setting'}`
 const DEFAULT_MEDIA_SETTINGS = {
@@ -91,6 +93,7 @@ async function initializeDatabase() {
     await bootStep('schema-hash-update', () => setAppSetting(db, SCHEMA_HASH_KEY, schemaHash, 'schema hash update'))
   }
 
+  await bootStep('geoip-removal-migration', () => ensureGeoipRemovalMigration(db))
   await bootStep('user-table-migration', () => ensureUserTableMigration(db))
   await bootStep('single-owner-migration', () => ensureSingleOwnerMigration(db))
   await bootStep('auth-epoch-migration', () => ensureAuthEpochs(db))
@@ -206,6 +209,18 @@ async function ensureUserTableMigration(db: Awaited<ReturnType<typeof useDb>>) {
 
   await queryDb(db, `UPDATE files SET visibility = 'public' WHERE visibility IS NONE;`, undefined, { label: 'legacy file visibility backfill', timeoutMs: 30_000 })
   await setAppSetting(db, USER_TABLE_MIGRATION_KEY, new Date().toISOString(), 'user table migration marker')
+}
+
+async function ensureGeoipRemovalMigration(db: Awaited<ReturnType<typeof useDb>>) {
+  const marker = await queryDb(
+    db,
+    'SELECT * FROM app_settings WHERE key = $key LIMIT 1;',
+    { key: GEOIP_REMOVAL_MIGRATION_KEY },
+    { label: 'geoip removal migration marker check', timeoutMs: 5_000 }
+  )
+  if (firstRow(marker)) return
+  await removeLegacyGeoFields(db)
+  await setAppSetting(db, GEOIP_REMOVAL_MIGRATION_KEY, new Date().toISOString(), 'geoip removal migration marker')
 }
 
 async function ensureSingleOwnerMigration(db: Awaited<ReturnType<typeof useDb>>) {

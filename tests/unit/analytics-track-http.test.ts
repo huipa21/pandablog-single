@@ -7,7 +7,6 @@ vi.mock('../../server/utils/settings', () => ({getAnalyticsSettings: () => ({ana
 vi.mock('../../server/utils/auth', () => ({isOwner: async () => Boolean(await mocks.user())}))
 vi.mock('../../server/utils/analytics/session', () => ({recordAnalyticsPageview: mocks.record}))
 vi.mock('../../server/utils/analytics/hash', () => ({hashAnalyticsVisitor: async () => '1'.repeat(64)}))
-vi.mock('../../server/utils/analytics/geo', () => ({lookupAnalyticsGeo: async () => ({})}))
 vi.mock('../../server/utils/visibility', () => ({evaluatePostAccess: async () => ({state: 'allow'})}))
 vi.mock('../../server/utils/rate-limit', () => ({consumeRateLimit: async () => ({allowed: true})}))
 let server: ReturnType<typeof createServer> | undefined
@@ -35,7 +34,7 @@ describe('actual H3 bounded analytics tracking boundary', () => {
   it('commits enabled public tracking through one atomic event helper', async () => {
     mocks.enabled = true
     expect(await send({path: '/blog/fixture', referrer: '/from'})).toBe(204)
-    expect(mocks.record).toHaveBeenCalledExactlyOnceWith({}, '1'.repeat(64), {}, expect.any(Date), 30, {path: '/blog/fixture', referrer: '/from'})
+    expect(mocks.record).toHaveBeenCalledExactlyOnceWith({}, '1'.repeat(64), expect.any(Date), 30, {path: '/blog/fixture', referrer: '/from'})
   })
   it.each(['null', 'oversized', 'staff', 'bot'])('silently drops %s beacons without any writes', async kind => {
     mocks.enabled = true

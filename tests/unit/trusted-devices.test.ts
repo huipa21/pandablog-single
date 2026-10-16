@@ -12,7 +12,6 @@ function device(overrides: Partial<TrustedDeviceRecord> = {}): TrustedDeviceReco
     uaHash: 'ua-hash',
     ip: '203.0.113.45',
     ipPrefix: '203.0.113.0/24',
-    country: 'US',
     createdAt: '2026-07-01T00:00:00.000Z',
     lastUsedAt: '2026-07-01T00:00:00.000Z',
     expiresAt: '2026-07-31T00:00:00.000Z',
@@ -26,22 +25,21 @@ function context(overrides: Partial<TrustedDeviceContext> = {}): TrustedDeviceCo
     uaHash: 'ua-hash',
     ip: '203.0.113.55',
     ipPrefix: '203.0.113.0/24',
-    country: 'US',
     ...overrides
   }
 }
 
 describe('trusted device helpers', () => {
-  it('matches by user agent hash and country when geo is available', () => {
+  it('matches by user agent hash and IP prefix', () => {
     expect(trustedDeviceContextMatches(device(), context())).toBe(true)
-    expect(trustedDeviceContextMatches(device(), context({ country: 'CA' }))).toBe(false)
+    expect(trustedDeviceContextMatches(device(), context({ ipPrefix: '198.51.100.0/24' }))).toBe(false)
     expect(trustedDeviceContextMatches(device(), context({ uaHash: 'other' }))).toBe(false)
   })
 
-  it('falls back to IP prefix when geo is unavailable', () => {
-    const stored = device({ country: null })
-    expect(trustedDeviceContextMatches(stored, context({ country: null, ipPrefix: '203.0.113.0/24' }))).toBe(true)
-    expect(trustedDeviceContextMatches(stored, context({ country: null, ipPrefix: '198.51.100.0/24' }))).toBe(false)
+  it('requires both sides to lack an IP prefix to match without one', () => {
+    expect(trustedDeviceContextMatches(device({ ipPrefix: null }), context({ ipPrefix: null }))).toBe(true)
+    expect(trustedDeviceContextMatches(device({ ipPrefix: null }), context())).toBe(false)
+    expect(trustedDeviceContextMatches(device(), context({ ipPrefix: null }))).toBe(false)
   })
 
   it('derives stable network prefixes', () => {

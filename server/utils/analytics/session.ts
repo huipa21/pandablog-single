@@ -4,7 +4,6 @@ import { stringifyRecordId } from '../surrealResult'
 import { analyticsResult } from './aggregate'
 import { BoundedAdmission } from '../admission'
 import { writeBarrier } from '../maintenance'
-import type { AnalyticsGeo } from './types'
 
 const tracking = new BoundedAdmission({active: 1, waiting: 32, waitMs: 2_000}, 'Analytics tracking')
 
@@ -12,10 +11,9 @@ const tracking = new BoundedAdmission({active: 1, waiting: 32, waitMs: 2_000}, '
  * first hits. Session count + pageview insertion commit together. No timeout or
  * transport replay: only confirmed transaction conflicts may retry.
  */
-export function recordAnalyticsPageview(db: Surreal, visitorHash: string, geo: AnalyticsGeo, now: Date, sessionWindowMinutes: number, pageview: {path: string, referrer?: string}) {
+export function recordAnalyticsPageview(db: Surreal, visitorHash: string, now: Date, sessionWindowMinutes: number, pageview: {path: string, referrer?: string}) {
   if (!/^[a-f0-9]{64}$/.test(visitorHash) || !Number.isInteger(sessionWindowMinutes) || sessionWindowMinutes < 5 || sessionWindowMinutes > 1440
-    || !Number.isFinite(now.getTime()) || Buffer.byteLength(pageview.path) > 2048 || Buffer.byteLength(pageview.referrer ?? '') > 2048
-    || Object.values(geo).some(value => typeof value !== 'string' || Buffer.byteLength(value) > 256)) throw new Error('Invalid analytics event')
+    || !Number.isFinite(now.getTime()) || Buffer.byteLength(pageview.path) > 2048 || Buffer.byteLength(pageview.referrer ?? '') > 2048) throw new Error('Invalid analytics event')
   return tracking.run(() => writeBarrier.run(async () => {
     const cutoff = new Date(now.getTime() - sessionWindowMinutes * 60_000)
     for (let attempt = 0; ; attempt++) {
@@ -32,15 +30,13 @@ export function recordAnalyticsPageview(db: Surreal, visitorHash: string, geo: A
             UPDATE $analyticsSession SET last_seen_at = IF last_seen_at < $now THEN $now ELSE last_seen_at END,
               pageview_count += 1 RETURN NONE;
           } ELSE {
-            CREATE $analyticsSession CONTENT {visitor_hash: $visitorHash, started_at: $now, last_seen_at: $now, pageview_count: 1,
-              country: $geo.country ?? NONE, region: $geo.region ?? NONE, city: $geo.city ?? NONE} RETURN NONE;
+            CREATE $analyticsSession CONTENT {visitor_hash: $visitorHash, started_at: $now, last_seen_at: $now,             pageview_count: 1} RETURN NONE;
           };
           UPSERT $head SET last_seen_at = IF last_seen_at = NONE OR last_seen_at < $now THEN $now ELSE last_seen_at END RETURN NONE;
-          CREATE pageview CONTENT {path: $path, referrer: $referrer ?? NONE, visitor_hash: $visitorHash, session: $analyticsSession, created_at: $now,
-            country: $geo.country ?? NONE, region: $geo.region ?? NONE, city: $geo.city ?? NONE} RETURN NONE;
+          CREATE pageview CONTENT {path: $path, referrer: $referrer ?? NONE, visitor_hash: $visitorHash, session: $analyticsSession,           created_at: $now} RETURN NONE;
           RETURN [{session: $analyticsSession}];
           COMMIT TRANSACTION;`,
-        {visitorHash, geo, now, cutoff, latestAcceptable: new Date(now.getTime() + sessionWindowMinutes * 60_000), path: pageview.path, referrer: pageview.referrer ?? null}, {label: 'analytics atomic event/session', timeoutMs: 20_000, retry: 'never'}), 'session')
+        {visitorHash, now, cutoff, latestAcceptable: new Date(now.getTime() + sessionWindowMinutes * 60_000), path: pageview.path, referrer: pageview.referrer ?? null}, {label: 'analytics atomic event/session', timeoutMs: 20_000, retry: 'never'}), 'session')
         if (!row?.session) throw new Error('Analytics event has no committed session')
         return stringifyRecordId(row.session)
       } catch (error) {

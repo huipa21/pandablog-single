@@ -103,7 +103,6 @@ export default defineNuxtConfig({
     // Rotating this value (or the session password fallback) invalidates all
     // stored MFA secrets and requires affected users to re-enroll.
     mfaSecret: env('NUXT_MFA_SECRET', ''),
-    geoipDbPath: env('NUXT_GEOIP_DB_PATH', 'storage/geoip/dbip-city-lite.mmdb'),
     session: {
       password: sessionPassword,
       maxAge: 60 * 60 * 24 * 7, // 7 days

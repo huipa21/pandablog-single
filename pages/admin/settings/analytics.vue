@@ -37,8 +37,6 @@
           </UFormField>
         </div>
 
-        <UAlert color="neutral" variant="soft" icon="i-lucide-map-pinned" :title="t('admin.settings.analytics.geoTitle')" :description="t('admin.settings.analytics.geoDescription')" />
-
         <div class="flex justify-end">
           <UButton type="submit" icon="i-lucide-save" :loading="saving">{{ t('common.save') }}</UButton>
         </div>

@@ -323,7 +323,6 @@ interface TrustedDeviceItem {
   userAgent: string | null
   ip: string | null
   ipPrefix: string | null
-  country: string | null
   createdAt: string
   lastUsedAt: string
   expiresAt: string
@@ -377,9 +376,9 @@ async function loadTrustedDevices() {
 }
 
 function trustedDeviceSummary(device: TrustedDeviceItem) {
-  const location = device.country || device.ipPrefix || device.ip || t('admin.settings.security.trustedDevicesUnknownLocation')
+  const network = device.ipPrefix || device.ip || t('admin.settings.security.trustedDevicesUnknownNetwork')
   return t('admin.settings.security.trustedDevicesSummary', {
-    location,
+    network,
     lastUsed: formatDeviceDate(device.lastUsedAt),
     expires: formatDeviceDate(device.expiresAt)
   })

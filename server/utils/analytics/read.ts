@@ -3,8 +3,7 @@ import { createError, getQuery } from 'h3'
 import type { Surreal } from 'surrealdb'
 import { queryDb, useDb } from '../db'
 import { firstRow, queryRows } from '../surrealResult'
-import { getAnalyticsSettings } from '../settings'
-import { addUtcDays, resolveGeoQueryWindows, startOfUtcDay, utcDateString } from './date'
+import { addUtcDays, startOfUtcDay, utcDateString } from './date'
 import { ANALYTICS_GROUP_LIMIT, ANALYTICS_MAX_RANGE_DAYS, readAnalyticsTotals } from './aggregate'
 
 export interface AnalyticsOverviewResponse {
@@ -14,8 +13,7 @@ export interface AnalyticsOverviewResponse {
   timeseries: Array<{date: string, pageViews: number, uniqueVisitors: number, sessions: number, bounceRate: number, avgVisitSeconds: number}>
 }
 export interface AnalyticsTopPage {path: string, views: number}
-export interface AnalyticsGeoRow {country: string, region: string, city: string, views: number}
-interface DailyRow {date: string, page_views: number, unique_visitors: number, sessions: number, bounce_sessions: number, total_visit_seconds: number, pages_truncated?: boolean, geo_truncated?: boolean, finalized?: boolean, verified?: boolean}
+interface DailyRow {date: string, page_views: number, unique_visitors: number, sessions: number, bounce_sessions: number, total_visit_seconds: number, pages_truncated?: boolean, finalized?: boolean, verified?: boolean}
 export interface AnalyticsRange {from: Date, to: Date, todayStart: Date, rollupStart: Date, rollupEnd: Date, liveStart: Date}
 
 export function parseAnalyticsRange(event: H3Event): AnalyticsRange {
@@ -47,7 +45,7 @@ export function parseAnalyticsLimit(value: unknown, fallback: number, max: numbe
 async function dailyRows(db: Surreal, range: AnalyticsRange) {
   if (range.rollupStart >= range.rollupEnd) return []
   const publication = firstRow<{epoch: string}>(await queryDb(db, 'SELECT epoch FROM analytics_publication:current;', {}, {label: 'analytics publication epoch', retry: 'readOnly'}))
-  return queryRows<DailyRow>(await queryDb(db, `SELECT date, page_views, unique_visitors, sessions, bounce_sessions, total_visit_seconds, pages_truncated, geo_truncated, finalized, (publication_epoch != NONE AND publication_epoch = $epoch) AS verified
+  return queryRows<DailyRow>(await queryDb(db, `SELECT date, page_views, unique_visitors, sessions, bounce_sessions, total_visit_seconds, pages_truncated, finalized, (publication_epoch != NONE AND publication_epoch = $epoch) AS verified
     FROM analytics_daily WITH NOINDEX WHERE date >= $fromDate AND date < $toDate ORDER BY date LIMIT 366 TIMEOUT 10s;`,
   {fromDate: utcDateString(range.rollupStart), toDate: utcDateString(range.rollupEnd), epoch: publication?.epoch ?? null}, {label: 'analytics bounded daily summaries', retry: 'readOnly'}))
 }
@@ -95,35 +93,6 @@ export async function getAnalyticsTopPages(range: AnalyticsRange, limit: number)
     }
   }
   return {pages: Array.from(counts, ([path, views]) => ({path, views})).sort((a, b) => b.views - a.views || a.path.localeCompare(b.path)).slice(0, limit), truncated, partial}
-}
-export async function getAnalyticsGeo(range: AnalyticsRange, limit: number) {
-  parseAnalyticsLimit(limit, 10, 50)
-  const db = await useDb(), counts = new Map<string, AnalyticsGeoRow>(), summaries = await dailyRows(db, range)
-  let truncated = summaries.some(row => row.geo_truncated === true), partial = summaries.some(row => row.verified !== true)
-  const windows = resolveGeoQueryWindows(range, getAnalyticsSettings().analytics_retention_days)
-  if (windows.rollup) partial ||= summaries.length < Math.max(0, (range.rollupEnd.getTime() - range.rollupStart.getTime()) / 86_400_000)
-  for (const source of ['rollup', 'raw'] as const) {
-    const window = windows[source]; if (!window) continue
-    const grouped = source === 'rollup'
-      ? `SELECT country, region, city, math::sum(views) AS views FROM analytics_daily_geo WITH NOINDEX
-         WHERE date >= $fromDate AND date < $toDate AND country != NONE GROUP BY country, region, city
-         ORDER BY views DESC, country, region, city LIMIT 1001 TIMEOUT 10s`
-      : `SELECT country, region, city, count() AS views FROM pageview WITH NOINDEX
-         WHERE created_at >= $from AND created_at < $to AND country != NONE GROUP BY country, region, city
-         ORDER BY views DESC, country, region, city LIMIT 1001 TIMEOUT 10s`
-    const rows = queryRows<AnalyticsGeoRow>(await queryDb(db,
-      `SELECT string::slice(country ?? '', 0, 257) AS country, string::slice(region ?? '', 0, 257) AS region,
-        string::slice(city ?? '', 0, 257) AS city, views FROM (${grouped}) TIMEOUT 10s;`,
-    {fromDate: utcDateString(window.from), toDate: utcDateString(window.to), from: window.from, to: window.to}, {label: `analytics bounded geo ${source}`, retry: 'readOnly'}))
-    truncated ||= rows.length > ANALYTICS_GROUP_LIMIT
-    for (const row of rows.slice(0, ANALYTICS_GROUP_LIMIT)) {
-      if ([row.country, row.region, row.city].some(value => value != null && (typeof value !== 'string' || Buffer.byteLength(value) > 256))) {partial = true; continue}
-      const location = {country: row.country ?? '', region: row.region ?? '', city: row.city ?? '', views: finiteCount(row.views)}
-      const key = JSON.stringify([location.country, location.region, location.city]), current = counts.get(key)
-      if (current) current.views += location.views; else counts.set(key, location)
-    }
-  }
-  return {locations: Array.from(counts.values()).sort((a, b) => b.views - a.views || JSON.stringify(a).localeCompare(JSON.stringify(b))).slice(0, limit), truncated, partial}
 }
 function finiteCount(value: unknown) {
   if (!Number.isSafeInteger(value) || (value as number) < 0) throw new Error('Invalid analytics count')
