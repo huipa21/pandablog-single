@@ -211,6 +211,22 @@ The admin username is always `admin`. The password is **not** stored in an envir
 on a fresh database, open `/admin` and complete the setup wizard. Your password is hashed with
 argon2id and stored in SurrealDB. You can change it later from **Admin → Settings → Account**.
 
+### Upgrading from a multi-user build
+
+Builds up to `20261010T111104Z-g7751feb17e1c` supported multiple accounts. On the first start of a
+newer build, a one-time migration (also re-applied after restoring an older backup) collapses the
+database to the single `admin` account:
+
+- All accounts other than `admin` and their trusted devices are **deleted**; their usernames are
+  printed in a `[single-owner]` warning. Posts, media, tags and categories are kept.
+- Role, author, `created_by`/`uploaded_by` and edit-lock data are dropped.
+- Posts that used "my login password" keep working: the owner's current password hash is copied
+  into the post. It no longer follows later login-password changes. If the owner had no password,
+  the post becomes **private**.
+- The migration refuses to run (and startup fails) if other accounts exist without `users:admin`.
+
+Existing `admin` sessions, MFA and trusted devices stay valid. Take a backup before upgrading.
+
 ---
 
 ## Available scripts

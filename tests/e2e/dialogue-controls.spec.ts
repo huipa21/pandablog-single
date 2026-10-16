@@ -32,7 +32,6 @@ test.beforeEach(async ({ page }) => {
     }
     else if (path === '/api/media/search') body = { files: [avatarFixture], total: 1, pages: 1, page: 1, limit: 20 }
     else if (path === '/api/media/tags') body = { tags: [] }
-    else if (path.endsWith('/lock')) body = { can_edit: true, locked: false }
     else if (path.startsWith('/api/admin/')) body = { settings: {}, categories: [], tags: [], versions: [], posts: [] }
     else if (route.request().method() !== 'GET') return route.abort()
     else return route.continue()

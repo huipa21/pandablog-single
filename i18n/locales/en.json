@@ -1388,7 +1388,7 @@
         "title": "System",
         "description": "Choose operational defaults for the admin panel.",
         "languageTitle": "Display language",
-        "languageDescription": "This changes the admin panel language for every administrator.",
+        "languageDescription": "This changes the admin panel language.",
         "languageLabel": "Display language",
         "dateFormatLabel": "Date format",
         "timezoneLabel": "Time zone",

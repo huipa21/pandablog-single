@@ -1376,7 +1376,7 @@
         "title": "系统",
         "description": "选择管理后台的系统默认选项。",
         "languageTitle": "显示语言",
-        "languageDescription": "此选项会更改所有管理员看到的后台语言。",
+        "languageDescription": "此选项会更改后台语言。",
         "languageLabel": "显示语言",
         "dateFormatLabel": "日期格式",
         "timezoneLabel": "时区",
