@@ -1,8 +1,8 @@
 <template>
-  <section class="mx-auto grid max-w-3xl gap-6">
-    <header class="grid gap-2">
-      <p class="text-sm font-medium uppercase tracking-wider text-[var(--pb-primary)]">{{ t('public.profile.eyebrow') }}</p>
-      <h1 class="text-3xl font-semibold tracking-normal text-[var(--pb-text)]">{{ t('public.profile.title') }}</h1>
+  <section class="grid gap-6">
+    <header>
+      <p class="text-sm font-medium uppercase tracking-wider text-[var(--pb-link)]">{{ t('admin.settings.common.eyebrow') }}</p>
+      <h1 class="mt-1 text-3xl font-semibold tracking-normal text-[var(--pb-text)]">{{ t('public.profile.title') }}</h1>
     </header>
 
     <UAlert v-if="loadError" color="error" icon="i-lucide-circle-alert" :title="t('public.profile.loadFailed')" />
@@ -92,28 +92,21 @@ import MediaPicker from '~/components/admin/media/MediaPicker.vue'
 import MediaSettingField from '~/components/admin/media/MediaSettingField.vue'
 import type { MediaRecord } from '~/types/content'
 
-type Role = 'superadmin' | 'admin' | 'author' | 'viewer'
-
-interface ProfileUser {
+interface AccountUser {
   id: string
   username: string
-  role: Role
   display_name: string | null
   email: string | null
   avatar: string | null
   avatar_url: string | null
 }
 
-const route = useRoute()
-const { t } = useI18n()
-const redirectTo = computed(() => String(route.fullPath || '/profile'))
-const { data, pending, error: loadError } = await useAsyncData('profile-me', () => $fetch<{ user: ProfileUser }>('/api/auth/me'), {
-  default: () => ({ user: null as unknown as ProfileUser })
-})
+definePageMeta({ layout: 'admin' })
 
-if (loadError.value) {
-  await navigateTo({ path: '/login', query: { redirect: redirectTo.value } })
-}
+const { t } = useI18n()
+const { data, pending, error: loadError } = await useAsyncData('admin-account-me', () => $fetch<{ user: AccountUser }>('/api/auth/me'), {
+  default: () => ({ user: null as unknown as AccountUser })
+})
 
 const profileForm = reactive({
   display_name: '',
@@ -150,7 +143,7 @@ async function saveProfile() {
   profileError.value = ''
 
   try {
-    const response = await $fetch<{ user: ProfileUser }>('/api/auth/me', {
+    const response = await $fetch<{ user: AccountUser }>('/api/auth/me', {
       method: 'PUT',
       body: {
         display_name: profileForm.display_name,
@@ -159,10 +152,7 @@ async function saveProfile() {
       }
     })
     data.value = response
-    await Promise.all([
-      refreshNuxtData('public-auth-session'),
-      refreshNuxtData('admin-layout-session')
-    ])
+    await refreshNuxtData(['public-auth-session', 'admin-layout-session'])
     profileNotice.value = t('public.profile.profileSaved')
   } catch (error: any) {
     profileError.value = error?.data?.message ?? error?.message ?? t('public.profile.profileSaveFailed')

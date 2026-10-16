@@ -26,22 +26,10 @@ export function graphVisibilityFilterForUser(user: SessionUser | null): GraphVis
     }
   }
 
-  if (user.role === 'superadmin') {
-    return {
-      where: `${base} AND (visibility IS NONE OR visibility IN ["public", "private"])`,
-      params: {},
-      viewerScope: 'superadmin'
-    }
-  }
-
   return {
-    where: `${base} AND (visibility IS NONE OR visibility = "public" OR (visibility = "private" AND (author = type::record($viewerTable, $viewerId) OR author_username = $viewerUsername)))`,
-    params: {
-      viewerTable: 'users',
-      viewerId: recordIdPart(user.id, 'users'),
-      viewerUsername: user.username
-    },
-    viewerScope: 'user'
+    where: `${base} AND (visibility IS NONE OR visibility IN ["public", "private"])`,
+    params: {},
+    viewerScope: 'owner'
   }
 }
 

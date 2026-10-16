@@ -1,9 +1,9 @@
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { queryDb, useDb } from '../../../utils/db'
 import { firstRow, stringifyRecordId } from '../../../utils/surrealResult'
 
 export default defineEventHandler(async (event) => {
-  await requireContentManager(event)
+  await requireOwner(event)
   const id = getRouterParam(event, 'id') ?? ''
   const body = await readBody<{ name?: string; filters?: Record<string, unknown> }>(event)
   const db = await useDb()

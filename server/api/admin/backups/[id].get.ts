@@ -1,8 +1,8 @@
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { getBackup } from '../../../utils/backups/registry'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const id = getRouterParam(event, 'id') ?? ''
 
   const record = await getBackup(id)

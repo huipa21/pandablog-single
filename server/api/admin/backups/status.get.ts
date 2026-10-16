@@ -1,4 +1,4 @@
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { getActiveJob, jobStore } from '../../../utils/backups/jobMutex'
 import { writeBarrier } from '../../../utils/maintenance'
 
@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const capability = jobStore.authorizeStatus(token)
   if (!capability) {
     if (writeBarrier.status().closed) throw createError({statusCode: 403, message: 'Restore status capability required'})
-    await requireSuperadmin(event)
+    await requireOwner(event)
   }
   const current = getActiveJob(), journal = jobStore.getJournal()
   const active = capability && current?.token !== journal?.owner.token ? null : current

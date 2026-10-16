@@ -48,7 +48,7 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real full restore worke
       await dbModule.queryDb(root, schema, undefined, {timeoutMs: 30_000})
       await dbModule.provisionAppDatabaseUser(root)
       const epoch = 'a'.repeat(48)
-      await dbModule.queryDb(root, `CREATE users:admin CONTENT {username: 'admin', password_hash: 'synthetic', role: 'superadmin', active: true, auth_epoch: $epoch};
+      await dbModule.queryDb(root, `CREATE users:admin CONTENT {username: 'admin', password_hash: 'synthetic', active: true, auth_epoch: $epoch};
         CREATE app_settings:layout CONTENT {key: '__media_storage_version', value: '2026-05-image-variants-v2'};
         CREATE app_settings:backup_options CONTENT {key: 'backups', value: {max_backups: 0, auto_safety_snapshot: true}};
         CREATE fixture_marker:retained SET title = 'base'; CREATE fixture_marker:deleted SET title = 'base';

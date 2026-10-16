@@ -1,4 +1,4 @@
-import { requireContentManager } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { queryDb, useDb } from '../../utils/db'
 import { serializeDate } from '../../utils/content'
 import { containsEmoji, slugify } from '../../../utils/slug'
@@ -7,7 +7,7 @@ import { queryRows } from '../../utils/surrealResult'
 import type { MediaTagSummary } from '~/types/content'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event), scope = mediaScope(user)
+  const user = await requireOwner(event), scope = mediaScope(user)
   const query = getQuery(event), search = typeof query.q === 'string' ? query.q.trim().toLowerCase() : ''
   if (search.length > 80) throw createError({statusCode: 400, message: 'Invalid media tag query'})
   // SPLIT retains a row for tags: []; exclude it before applying string functions.

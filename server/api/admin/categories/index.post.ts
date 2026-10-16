@@ -1,11 +1,11 @@
 import { queryDb, useDb } from '../../../utils/db'
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { firstRow, recordIdPart } from '../../../utils/surrealResult'
 import { assertValidCategoryParent, normalizeCategory, taxonomyName, taxonomyParentId, uniqueTaxonomySlug } from '../../../utils/taxonomy'
 import { stringOrNull } from '../../../utils/content'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  await requireOwner(event)
 
   const body = await readBody<Record<string, unknown>>(event)
   const name = taxonomyName(body.name)
@@ -25,8 +25,8 @@ export default defineEventHandler(async (event) => {
 
   const response = await queryDb(
     db,
-    `CREATE category SET name = $name, slug = $slug, parent = ${parentSql}, created_by = type::record($userTable, $userId)${descriptionSql};`,
-    { name, slug, description, categoryTable: 'category', parentId, userTable: 'users', userId: recordIdPart(user.id, 'users') }
+    `CREATE category SET name = $name, slug = $slug, parent = ${parentSql}${descriptionSql};`,
+    { name, slug, description, categoryTable: 'category', parentId }
   )
   const created = firstRow<Record<string, unknown>>(response)
 

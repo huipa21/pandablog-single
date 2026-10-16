@@ -2,9 +2,9 @@ import type { H3Event } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getBackupSettings } from '../../server/utils/settings'
 
-const mocks = vi.hoisted(() => ({ queryDb: vi.fn(), useDb: vi.fn(), requireSuperadmin: vi.fn(), readBody: vi.fn() }))
+const mocks = vi.hoisted(() => ({ queryDb: vi.fn(), useDb: vi.fn(), requireOwner: vi.fn(), readBody: vi.fn() }))
 vi.mock('../../server/utils/db', () => mocks)
-vi.mock('../../server/utils/auth', () => ({ requireSuperadmin: mocks.requireSuperadmin }))
+vi.mock('../../server/utils/auth', () => ({ requireOwner: mocks.requireOwner }))
 vi.mock('../../server/utils/users', () => ({}))
 vi.mock('../../server/utils/posts', () => ({ ADMIN_POST_DISPLAY_MODE_KEY: 'admin_post_display_mode', normalizeAdminPostDisplayMode: vi.fn() }))
 
@@ -32,7 +32,7 @@ describe('backup settings after access file migration', () => {
     expect(result.settings).not.toHaveProperty('include_access_logs')
     expect(result.settings).not.toHaveProperty('default_excluded_tables')
     expect(mocks.queryDb.mock.calls.at(-1)![2].value).toEqual(result.settings)
-    expect(mocks.requireSuperadmin.mock.invocationCallOrder[0]).toBeLessThan(mocks.readBody.mock.invocationCallOrder[0]!)
+    expect(mocks.requireOwner.mock.invocationCallOrder[0]).toBeLessThan(mocks.readBody.mock.invocationCallOrder[0]!)
   })
   it.each([{default_excluded_tables: []}, {include_access_logs: true}, {unknown: true}])('rejects retired and unknown request keys %j before writing', async body => {
     mocks.readBody.mockResolvedValue(body)
@@ -53,7 +53,7 @@ describe('backup settings after access file migration', () => {
     expect(mocks.queryDb).not.toHaveBeenCalled()
   })
   it('denies unauthorized updates before reading settings or body', async () => {
-    mocks.requireSuperadmin.mockRejectedValue(new Error('Forbidden'))
+    mocks.requireOwner.mockRejectedValue(new Error('Forbidden'))
     const { default: put } = await import('../../server/api/admin/backups/settings.put')
     await expect(put({} as H3Event)).rejects.toThrow('Forbidden')
     expect(mocks.readBody).not.toHaveBeenCalled()

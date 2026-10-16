@@ -82,12 +82,12 @@ export default defineEventHandler(async (event) => {
       action: 'auth.login',
       resource_type: 'session',
       resource_id: sessionUser.id,
-      metadata: { username: sessionUser.username, role: sessionUser.role, mfa: true, trusted_device: body?.trustDevice === true },
+      metadata: { username: sessionUser.username, mfa: true, trusted_device: body?.trustDevice === true },
       description: 'User signed in'
     })
     dispatchSecurityAlert('login.success', alertDetailsFromEvent(event, {
       username: sessionUser.username,
-      reason: `Role: ${sessionUser.role} (MFA enrolled)`
+      reason: 'MFA enrolled'
     }))
 
     return { enabled: true, backup_codes: backupCodes.plain, user: sessionUser }

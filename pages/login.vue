@@ -126,11 +126,9 @@ import { resolveLoginRedirect, safeInternalPath } from '~/utils/authRedirect'
 
 definePageMeta({ layout: false })
 
-type Role = 'superadmin' | 'admin' | 'author' | 'viewer'
 interface LoginUser {
   id: string
   username: string
-  role: Role
 }
 
 const route = useRoute()
@@ -158,7 +156,7 @@ onMounted(async () => {
 
   const session = await $fetch<{ loggedIn: boolean, user: LoginUser | null }>('/api/auth/session').catch(() => null)
   if (session?.loggedIn && session.user) {
-    await navigateAfterLogin(session.user.role)
+    await navigateAfterLogin()
   }
 })
 
@@ -189,7 +187,7 @@ async function login() {
       return
     }
     if (response.user) {
-      await navigateAfterLogin(response.user.role)
+      await navigateAfterLogin()
     }
   } catch (error: any) {
     errorMessage.value = error?.data?.message ?? error?.statusMessage ?? t('public.login.invalid')
@@ -203,11 +201,11 @@ async function verifyMfa() {
   errorMessage.value = ''
 
   try {
-    const response = await $fetch<{ user: LoginUser }>('/api/auth/login/mfa', {
+    await $fetch<{ user: LoginUser }>('/api/auth/login/mfa', {
       method: 'POST',
       body: { code: mfaCode.value, trustDevice: trustDevice.value }
     })
-    await navigateAfterLogin(response.user.role)
+    await navigateAfterLogin()
   } catch (error: any) {
     errorMessage.value = error?.data?.message ?? error?.statusMessage ?? t('public.login.mfa.invalid')
   } finally {
@@ -255,7 +253,7 @@ async function activateEnroll() {
 
 async function finishEnrollment() {
   if (pendingUser.value) {
-    await navigateAfterLogin(pendingUser.value.role)
+    await navigateAfterLogin()
     return
   }
   resetToCredentials()
@@ -276,9 +274,9 @@ function redirectTarget() {
   return safeInternalPath(route.query.redirect, '/')
 }
 
-async function navigateAfterLogin(role: Role) {
+async function navigateAfterLogin() {
   await refreshNuxtData(['public-auth-session', 'admin-layout-session'])
-  await navigateTo(resolveLoginRedirect(role, route.query.redirect))
+  await navigateTo(resolveLoginRedirect(route.query.redirect))
 }
 </script>
 

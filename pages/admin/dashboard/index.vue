@@ -16,12 +16,12 @@
         <h2 class="text-lg font-semibold text-[var(--pb-text)]">{{ t('admin.dashboard.assets') }}</h2>
         <p class="mt-1 text-sm text-[var(--pb-text-muted)]">{{ t('admin.dashboard.assetsDescription') }}</p>
       </NuxtLink>
-      <NuxtLink v-if="isSuperadmin" to="/admin/dashboard/analytics" class="pb-admin-surface block p-5 transition hover:border-[var(--pb-selected-border)] hover:bg-[var(--pb-selected-bg)]">
+      <NuxtLink to="/admin/dashboard/analytics" class="pb-admin-surface block p-5 transition hover:border-[var(--pb-selected-border)] hover:bg-[var(--pb-selected-bg)]">
         <UIcon name="i-lucide-chart-no-axes-combined" class="mb-4 size-6 text-[var(--pb-primary)]" />
         <h2 class="text-lg font-semibold text-[var(--pb-text)]">{{ t('admin.dashboard.analytics') }}</h2>
         <p class="mt-1 text-sm text-[var(--pb-text-muted)]">{{ t('admin.dashboard.analyticsDescription') }}</p>
       </NuxtLink>
-      <NuxtLink v-if="isSuperadmin" to="/admin/dashboard/logs" class="pb-admin-surface block p-5 transition hover:border-[var(--pb-selected-border)] hover:bg-[var(--pb-selected-bg)]">
+      <NuxtLink to="/admin/dashboard/logs" class="pb-admin-surface block p-5 transition hover:border-[var(--pb-selected-border)] hover:bg-[var(--pb-selected-bg)]">
         <UIcon name="i-lucide-clipboard-list" class="mb-4 size-6 text-[var(--pb-primary)]" />
         <h2 class="text-lg font-semibold text-[var(--pb-text)]">{{ t('admin.dashboard.logs') }}</h2>
         <p class="mt-1 text-sm text-[var(--pb-text-muted)]">{{ t('admin.dashboard.logsDescription') }}</p>
@@ -34,9 +34,4 @@
 definePageMeta({ layout: 'admin' })
 
 const { t } = useI18n()
-const sessionFetch = useSessionFetch()
-const { data: session } = await useAsyncData('admin-dashboard-session', () => sessionFetch<{ user: { role?: string } | null }>('/api/auth/session'), {
-  default: () => ({ user: null })
-})
-const isSuperadmin = computed(() => session.value.user?.role === 'superadmin')
 </script>

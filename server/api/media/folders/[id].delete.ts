@@ -1,10 +1,10 @@
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { queryDb, queryDbRecord, useDb } from '../../../utils/db'
 import { mediaNormalizeFileRecord, mediaNormalizeFolderId } from '../../../utils/mediaLibrary'
 import { firstRow, queryRows } from '../../../utils/surrealResult'
 
 export default defineEventHandler(async (event) => {
-  await requireContentManager(event)
+  await requireOwner(event)
   const id = mediaNormalizeFolderId(getRouterParam(event, 'id') ?? '')
   const db = await useDb()
 

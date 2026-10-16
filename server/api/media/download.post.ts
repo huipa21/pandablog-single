@@ -1,4 +1,4 @@
-import { requireContentManager, getRequestAuthAccount } from '../../utils/auth'
+import { requireOwner, getRequestAuthAccount } from '../../utils/auth'
 import { useDb } from '../../utils/db'
 import { authorizedArchiveFiles } from '../../utils/media-archive-policy'
 import { mediaArchiveStore } from '../../utils/media-archives'
@@ -9,7 +9,7 @@ import { getMediaSettings } from '../../utils/settings'
 
 export default defineEventHandler(async event => {
   privateMediaHeaders(event)
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const body = await readBoundedJson(event)
   if (!Array.isArray(body.hashes) || !body.hashes.length || body.hashes.length > 200 || !body.hashes.every(hash => typeof hash === 'string' && /^[a-f0-9]{64}$/i.test(hash))) throw createError({statusCode: 400, message: 'Invalid file selection'})
   const hashes = [...new Set((body.hashes as string[]).map(hash => hash.toLowerCase()))]

@@ -1,7 +1,7 @@
 import { privateMediaHeaders } from '../utils/media-cache'
 import { isMaintenanceDiagnosticRequest } from '../utils/maintenance-handler'
 import { getSiteVisibility } from '../utils/visibility'
-import { isAuthenticated } from '../utils/auth'
+import { isOwner } from '../utils/auth'
 
 const ALWAYS_ALLOWED_PREFIXES = [
   '/api/auth',
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
   const site = await getSiteVisibility()
   if (site === 'public') return
 
-  if (await isAuthenticated(event)) return
+  if (await isOwner(event)) return
 
   if (url.startsWith('/api/')) {
     throw createError({ statusCode: 401, message: 'Authentication required' })

@@ -178,7 +178,6 @@ interface VersionRow {
   version?: unknown
   datetime?: unknown
   diff?: unknown
-  created_by?: unknown
 }
 
 export interface PostVersionRecord {
@@ -186,8 +185,6 @@ export interface PostVersionRecord {
   version: string
   datetime: string
   diff: BlockVersionDiffRow[]
-  ownerId: string | null
-  ownerName: string | null
 }
 
 export interface BlockVersionDiffRow {
@@ -201,7 +198,6 @@ export interface BlockVersionDiffRow {
 
 interface SyncPostBlocksOptions {
   shouldSnapshot?: boolean
-  userId?: string | null
 }
 
 /**
@@ -465,7 +461,7 @@ export async function syncPostBlocks(
   const changed = blocksChanged(existing, nextBlocks)
 
   if (options.shouldSnapshot && changed && existing.length) {
-    await snapshotCurrentVersion(db, postId, currentVersionId, existing, nextBlocks, options.userId ?? null)
+    await snapshotCurrentVersion(db, postId, currentVersionId, existing, nextBlocks)
   }
 
   await queryDb(
@@ -518,8 +514,7 @@ async function snapshotCurrentVersion(
   postId: string,
   currentVersionId: string,
   existingBlocks: BlockRecord[],
-  nextBlocks: BlockRecord[],
-  userId: string | null = null
+  nextBlocks: BlockRecord[]
 ) {
   const currentResponse = await queryDb(
     db,
@@ -564,7 +559,7 @@ async function snapshotCurrentVersion(
   }
 
   const stmts: string[] = [
-    `UPSERT type::record('versions', $snapshotVersionId) CONTENT { version: $snapshotLabel, datetime: $snapshotDatetime, diff: $diff, created_by: (IF $createdBy != NONE THEN type::record('users', $createdBy) ELSE NONE END), created_at: time::now() };`,
+    `UPSERT type::record('versions', $snapshotVersionId) CONTENT { version: $snapshotLabel, datetime: $snapshotDatetime, diff: $diff, created_at: time::now() };`,
     `RELATE (type::record('post', $postId)) -> has_version -> (type::record('versions', $snapshotVersionId));`
   ]
   const params: Record<string, unknown> = {
@@ -573,8 +568,7 @@ async function snapshotCurrentVersion(
     snapshotLabel,
     snapshotDatetime: currentDatetime,
     currentVersionId,
-    diff,
-    createdBy: userId ? recordIdPart(userId, 'users') : null
+    diff
   }
 
   for (let i = 0; i < existingBlocks.length; i += 1) {
@@ -613,7 +607,7 @@ export async function loadVersionsForPost(db: Surreal, postRecordId: string): Pr
     db,
     `SELECT out FROM has_version
      WHERE in = type::record('post', $postId)
-     FETCH out, out.created_by;`,
+     FETCH out;`,
     { postId },
     { label: 'load post versions' }
   )
@@ -701,16 +695,11 @@ function normalizeVersionRow(row: VersionRow | undefined): PostVersionRecord | n
   if (!row?.id) return null
   const version = String(row.version ?? '')
   if (!version || version === 'current') return null
-  const owner = row.created_by && typeof row.created_by === 'object' ? row.created_by as Record<string, unknown> : null
-  const ownerId = owner?.id ? stringifyRecordId(owner.id) : (row.created_by ? stringifyRecordId(row.created_by) : null)
-  const ownerName = owner ? String(owner.display_name ?? owner.username ?? '') || null : null
   return {
     id: stringifyRecordId(row.id),
     version,
     datetime: parseDateLike(row.datetime)?.toISOString() ?? String(row.datetime ?? ''),
-    diff: Array.isArray(row.diff) ? row.diff as BlockVersionDiffRow[] : [],
-    ownerId: ownerId || null,
-    ownerName
+    diff: Array.isArray(row.diff) ? row.diff as BlockVersionDiffRow[] : []
   }
 }
 

@@ -5,7 +5,7 @@ import { writeAppSettings } from '../../server/utils/settings'
 const mocks = vi.hoisted(() => ({query: vi.fn(), reserve: vi.fn()}))
 vi.mock('../../server/utils/db', () => ({queryDb: mocks.query, useDb: async () => ({}), queryDbRecord: vi.fn(), findBySlug: vi.fn()}))
 vi.mock('../../server/utils/referenceTracker', () => ({mediaReserveReferences: mocks.reserve}))
-const hash = 'a'.repeat(64), owner = {id: 'users:fixture', username: 'fixture', role: 'author' as const}
+const hash = 'a'.repeat(64), owner = {id: 'users:admin', username: 'admin'}
 beforeEach(() => {vi.clearAllMocks(); mocks.query.mockResolvedValue([[]]); mocks.reserve.mockResolvedValue(undefined)})
 describe('additional media reference writers (owned mocks, no configured targets)', () => {
   it('version restore refuses unavailable media before any version/block write', async () => {

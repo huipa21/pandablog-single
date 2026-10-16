@@ -4,7 +4,6 @@
       <EditorVersionsPanel
         v-if="mode === 'versions'"
         :versions="versions ?? []"
-        :read-only="readOnly"
         @close="$emit('closeVersions')"
         @diff="$emit('diffVersion', $event)"
         @restore="$emit('restoreVersion', $event)"
@@ -28,7 +27,6 @@ defineProps<{
   editor: Editor | null
   mode?: 'settings' | 'versions'
   versions?: PostVersionListItem[]
-  readOnly?: boolean
 }>()
 
 defineEmits<{

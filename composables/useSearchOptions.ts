@@ -1,6 +1,6 @@
 import type { SearchOptionsResponse } from '~/types/content'
 
-const EMPTY_SEARCH_OPTIONS: SearchOptionsResponse = { tags: [], categories: [], authors: [] }
+const EMPTY_SEARCH_OPTIONS: SearchOptionsResponse = { tags: [], categories: [] }
 
 /**
  * Autocomplete data for the advanced search panel (tags, categories, authors).

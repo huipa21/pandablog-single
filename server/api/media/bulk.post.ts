@@ -1,4 +1,4 @@
-import { requireContentManager } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { queryDb, useDb } from '../../utils/db'
 import { mediaDeleteClaimedFile } from '../../utils/mediaCleanup'
 import { readBoundedJson } from '../../utils/bounded-json'
@@ -9,7 +9,7 @@ import { mediaScope } from '../../utils/media-query'
 import { mediaMetadataTags, mediaMetadataFolders } from '../../utils/media-metadata'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const body = await readBoundedJson(event, 32 * 1024) as {
     action: 'delete' | 'update', hashes: string[],
     data?: { tags?: string[]; comment?: string; folders?: string[]; folderMode?: 'replace' | 'add' }
@@ -59,7 +59,7 @@ export default defineEventHandler(async (event) => {
       const folderIds = mediaMetadataFolders(data.folders)
 
       if (data.folderMode === 'add' && folderIds.length) {
-        const existingResponse = await queryDb(db, `SELECT id, hash, visibility, created_by, uploaded_by, storage_state, array::slice(folders, 0, 33) AS folders FROM files WHERE hash IN $hashes AND ${scope.where} LIMIT 200;`, {hashes, ...scope.params})
+        const existingResponse = await queryDb(db, `SELECT id, hash, visibility, storage_state, array::slice(folders, 0, 33) AS folders FROM files WHERE hash IN $hashes AND ${scope.where} LIMIT 200;`, {hashes, ...scope.params})
         const filesByHash = new Map(queryRows<Record<string, unknown>>(existingResponse).map((record) => {
           const file = mediaNormalizeFileRecord(record)
           return [file.hash, file]
@@ -126,7 +126,7 @@ function addFolderAssignment(assignments: string[], params: Record<string, unkno
   assignments.push(`folders = [${folderExpressions.join(', ')}]`)
 }
 
-async function filterManageableHashes(db: Awaited<ReturnType<typeof useDb>>, hashes: string[], user: Awaited<ReturnType<typeof requireContentManager>>) {
+async function filterManageableHashes(db: Awaited<ReturnType<typeof useDb>>, hashes: string[], user: Awaited<ReturnType<typeof requireOwner>>) {
   if (!hashes.length) {
     return []
   }

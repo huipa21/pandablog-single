@@ -11,7 +11,6 @@ export interface JsonContent {
 
 export type PostStatus = 'draft' | 'published' | 'archived'
 export type PostVisibility = 'public' | 'private' | 'password'
-export type PostPasswordSource = 'custom' | 'user'
 
 /**
  * Editor-facing block: a top-level Tiptap node that has been persisted
@@ -38,7 +37,6 @@ export interface PostRecord {
   blocks?: BlockRecord[]
   status: PostStatus
   cover_image?: string | null
-  author_username: string
   published_at?: string | null
   created_at: string
   updated_at: string
@@ -48,8 +46,6 @@ export interface PostRecord {
   has_versioning?: boolean
   visibility?: PostVisibility
   password_hint?: string | null
-  password_source?: PostPasswordSource
-  password_owner?: string | null
   tag_ids?: string[]
   category_ids?: string[]
   tags?: TagRecord[]
@@ -139,16 +135,9 @@ export interface SearchOptionCategory {
   count: number
 }
 
-export interface SearchOptionAuthor {
-  /** Opaque, non-reversible author id (never the username). */
-  id: string
-  name: string
-}
-
 export interface SearchOptionsResponse {
   tags: SearchOptionTag[]
   categories: SearchOptionCategory[]
-  authors: SearchOptionAuthor[]
 }
 
 export type SearchSort = 'relevance' | 'date_desc' | 'date_asc' | 'title'
@@ -216,8 +205,6 @@ export interface MediaRecord {
   reference_count?: number
   referenced_by?: string[]
   visibility?: 'public' | 'private'
-  created_by?: string | null
-  uploaded_by?: string | null
   thumbnail_url?: string | null
   perceptual_hash?: string | null
   created_at: string

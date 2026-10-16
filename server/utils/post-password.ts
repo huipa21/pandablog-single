@@ -1,9 +1,6 @@
 import { hashAdminPassword, verifyAdminPassword } from './admin-password'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { H3Event } from 'h3'
-import type { Surreal } from 'surrealdb'
-import { queryDbRecord } from './db'
-import { recordIdPart, stringifyRecordId } from './surrealResult'
 
 const COOKIE_NAME = 'pb_unlocked'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -105,41 +102,4 @@ export async function verifyPostPassword(hash: string, plain: string, signal?: A
 
 export function fakePostPasswordHash(): string {
   return FAKE_HASH
-}
-
-/**
- * Returns the password hash that should be used to verify access to a
- * password-protected post. If the post is configured to use the linked
- * owner's login password (`password_source === 'user'`), the owner's
- * `password_hash` is fetched live. Otherwise the post's own stored
- * `password_hash` is returned. Returns `null` when no hash is available.
- */
-export async function resolveEffectivePostPasswordHash(
-  post: Record<string, unknown>,
-  db: Surreal
-): Promise<string | null> {
-  const source = typeof post.password_source === 'string' ? post.password_source : 'custom'
-
-  if (source === 'user') {
-    const ownerRaw = post.password_owner
-    if (!ownerRaw) {
-      return null
-    }
-
-    const ownerId = recordIdPart(stringifyRecordId(ownerRaw), 'users')
-    if (!ownerId) {
-      return null
-    }
-
-    const owner = await queryDbRecord(db, 'users', ownerId)
-    if (!owner) {
-      return null
-    }
-
-    const hash = typeof owner.password_hash === 'string' ? owner.password_hash : ''
-    return hash.length > 0 ? hash : null
-  }
-
-  const hash = typeof post.password_hash === 'string' ? post.password_hash : ''
-  return hash.length > 0 ? hash : null
 }

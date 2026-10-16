@@ -2,7 +2,7 @@ import { queryDb, useDb } from '../../../utils/db'
 import { normalizePost } from '../../../utils/content'
 import { normalizeCategory, normalizeTag } from '../../../utils/taxonomy'
 import { firstRow, queryRows, recordIdPart, stringifyRecordId } from '../../../utils/surrealResult'
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import type { PostRecord, PostStatus, PostVisibility } from '~/types/content'
 
 const statuses: Array<PostStatus | 'all'> = ['all', 'draft', 'published', 'archived']
@@ -26,7 +26,7 @@ const sortOrders = {
 type AdminPostSort = keyof typeof sortOrders
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  await requireOwner(event)
 
   const query = getQuery(event)
   const limit = normalizeLimit(query.limit)
@@ -54,10 +54,7 @@ export default defineEventHandler(async (event) => {
   const conditions: string[] = []
   const params: Record<string, unknown> = {
     limit,
-    start,
-    userTable: 'users',
-    userId: recordIdPart(user.id, 'users'),
-    username: user.username
+    start
   }
 
   if (statusList.length) {
@@ -68,10 +65,6 @@ export default defineEventHandler(async (event) => {
     params.status = status
   } else {
     conditions.push('status != "archived"')
-  }
-
-  if (user.role === 'author') {
-    conditions.push('(author = type::record($userTable, $userId) OR (author IS NONE AND author_username = $username))')
   }
 
   if (visibilityList.length) {
@@ -124,9 +117,9 @@ export default defineEventHandler(async (event) => {
 
   const response = await queryDb(
     db,
-    `SELECT id, title, slug, summary, status, cover_image, author_username,
+    `SELECT id, title, slug, summary, status, cover_image,
       published_at, created_at, updated_at, view_count, word_count, cjk_char_count,
-      visibility, password_hint, password_source, password_owner
+      visibility, password_hint
      FROM post WHERE ${where} ORDER BY ${orderBy} LIMIT $limit START $start;
      SELECT count() AS total FROM post WHERE ${where} GROUP ALL;`,
     params

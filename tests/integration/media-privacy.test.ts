@@ -7,7 +7,7 @@ import { authorizedArchiveFiles } from '../../server/utils/media-archive-policy'
 // queryDb uses only the supplied owned client; the changed query explicitly
 // disables reconnect fallback, so no configured runtime target can be opened.
 describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real archive policy projections', () => {
-  it('source and getter SQL carry actual private/owner policy; private selection by another author fails', async () => {
+  it('source and getter SQL carry the visibility policy; missing selections fail closed', async () => {
     const fixture = await startFixture({enabled: process.env.PB_BACKEND_FIXTURE, binary: process.env.PB_BACKEND_SURREAL_BIN ?? ''})
     const db = new Surreal()
     try {
@@ -22,15 +22,13 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real archive policy pro
       const hashes = ['a'.repeat(64), 'b'.repeat(64)]
       for (const [index, hash] of hashes.entries()) await db.query(`CREATE type::record('files', $hash) CONTENT {
         hash: $hash, original_name: $name, stored_name: $name, original_path: $name,
-        mime_type: 'text/plain', extension: 'txt', size: 32, visibility: $visibility,
-        created_by: type::record('users', 'fixture'), uploaded_by: 'fixture'
+        mime_type: 'text/plain', extension: 'txt', size: 32, visibility: $visibility
       };`, {hash, name: `${index}.txt`, visibility: index === 0 ? 'private' : 'public'})
-      const owner = {id: 'users:fixture', username: 'fixture', role: 'author' as const}
+      const owner = {id: 'users:admin', username: 'admin'}
       for (const source of [true, false]) {
         const files = await authorizedArchiveFiles(db, hashes, owner, source)
         expect(files).toHaveLength(2)
-        expect(files.find(file => file.hash === hashes[0])).toMatchObject({visibility: 'private', created_by: owner.id})
-        await expect(authorizedArchiveFiles(db, hashes, {...owner, id: 'users:other', username: 'other'}, source)).rejects.toMatchObject({statusCode: 404})
+        expect(files.find(file => file.hash === hashes[0])).toMatchObject({visibility: 'private'})
       }
       await expect(authorizedArchiveFiles(db, ['c'.repeat(64)], owner, true)).rejects.toMatchObject({statusCode: 404})
       process.stdout.write(JSON.stringify({evidence: 'REV-1.5-local-real-SQL-not-production', node: process.version, surreal: (await db.version()).version, sdk: '2.0.3'}) + '\n')

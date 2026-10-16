@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({query: vi.fn(), record: vi.fn(), user: vi.fn(), enabled: false}))
 vi.mock('../../server/utils/db', () => ({useDb: async () => ({}), queryDb: mocks.query}))
 vi.mock('../../server/utils/settings', () => ({getAnalyticsSettings: () => ({analytics_enabled: mocks.enabled, analytics_session_window_minutes: 30}), getRuntimeFlags: () => ({trust_proxy_headers: false})}))
-vi.mock('../../server/utils/auth', () => ({getSessionUser: mocks.user, isAdminTier: (user: {role?: string} | null) => user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'author'}))
+vi.mock('../../server/utils/auth', () => ({isOwner: async () => Boolean(await mocks.user())}))
 vi.mock('../../server/utils/analytics/session', () => ({recordAnalyticsPageview: mocks.record}))
 vi.mock('../../server/utils/analytics/hash', () => ({hashAnalyticsVisitor: async () => '1'.repeat(64)}))
 vi.mock('../../server/utils/analytics/geo', () => ({lookupAnalyticsGeo: async () => ({})}))
@@ -39,7 +39,7 @@ describe('actual H3 bounded analytics tracking boundary', () => {
   })
   it.each(['null', 'oversized', 'staff', 'bot'])('silently drops %s beacons without any writes', async kind => {
     mocks.enabled = true
-    if (kind === 'staff') mocks.user.mockResolvedValue({role: 'author'})
+    if (kind === 'staff') mocks.user.mockResolvedValue({id: 'users:admin', username: 'admin'})
     expect(await send(kind === 'null' ? null : {path: '/blog/fixture', ...(kind === 'oversized' ? {padding: 'x'.repeat(9000)} : {})}, kind === 'bot' ? 'Googlebot' : undefined)).toBe(204)
     expect(mocks.query).not.toHaveBeenCalled(); expect(mocks.record).not.toHaveBeenCalled()
   })

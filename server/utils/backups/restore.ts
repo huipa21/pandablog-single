@@ -20,6 +20,7 @@ import { invalidateAnalyticsPublication } from '../analytics/publication'
 import { queryRows } from '../surrealResult'
 import { mediaProcessImageFile } from '../imageProcessor'
 import { newAuthEpoch } from '../users'
+import { collapseToSingleOwner } from '../single-owner-migration'
 import { writeBarrier } from '../maintenance'
 
 /** Authorization occurs at the API BEFORE issuance of this job-only capability. */
@@ -58,6 +59,7 @@ async function repairRuntimeAndSessions() {
   const db = await connectRootClient()
   try {
     await applySchema(db, undefined, {preserveData: true})
+    await collapseToSingleOwner(db)
     await provisionAppDatabaseUser(db)
     await invalidateAnalyticsPublication(db)
     let after: unknown = null
@@ -68,7 +70,7 @@ async function repairRuntimeAndSessions() {
       after = rows[rows.length - 1]!.id
     }
     await queryDb(db, 'DELETE trusted_devices;', undefined, {retry: 'never'})
-    const owner = queryRows(await queryDb(db, "SELECT id FROM users:admin WHERE active = true AND role = 'superadmin';", undefined, {retry: 'never'}))
+    const owner = queryRows(await queryDb(db, "SELECT id FROM users:admin WHERE active = true;", undefined, {retry: 'never'}))
     if (owner.length !== 1) throw new Error('Restored owner is unavailable; offline account migration is required')
   } finally {await closeRootClient(db)}
   await recycleRuntimeConnection()

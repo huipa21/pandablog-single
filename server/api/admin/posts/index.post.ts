@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { queryDb, useDb } from '../../../utils/db'
 import { buildPostPayload, normalizePost, stringOrNull } from '../../../utils/content'
 import { firstRow, recordIdPart, stringifyRecordId } from '../../../utils/surrealResult'
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { assertPostSlugAvailable, uniquePostSlug } from '../../../utils/posts'
 import { readPostTaxonomy, syncPostTaxonomy } from '../../../utils/taxonomy'
 import { hashPostPassword } from '../../../utils/post-password'
@@ -12,12 +12,11 @@ import { syncPostSearchTerms } from '../../../utils/searchTerms'
 import type { JsonContent, PostVisibility } from '~/types/content'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const body = await readBody<Record<string, unknown>>(event)
-  const payload = buildPostPayload(body, user.username)
+  const payload = buildPostPayload(body)
   const visibility = normalizeVisibility(body.visibility)
   const password = typeof body.password === 'string' ? body.password : ''
-  const passwordSource = visibility === 'password' && password.length > 0 ? 'custom' : 'user'
 
   if (payload.status === 'published' && !payload.title) {
     throw createError({ statusCode: 400, message: 'Title is required' })
@@ -25,14 +24,11 @@ export default defineEventHandler(async (event) => {
 
   const visibilityUpdates: Record<string, unknown> = { visibility }
   if (visibility === 'password') {
-    visibilityUpdates.password_source = passwordSource
     const passwordHint = stringOrNull(body.password_hint)
     if (passwordHint) {
       visibilityUpdates.password_hint = passwordHint
     }
-    if (passwordSource === 'custom') {
-      visibilityUpdates.password_hash = await hashPostPassword(password)
-    }
+    visibilityUpdates.password_hash = await hashPostPassword(password)
   }
 
   const db = await useDb()
@@ -62,19 +58,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const postId = recordIdPart(stringifyRecordId(post.id), 'post')
-  await queryDb(
-    db,
-    'UPDATE type::record($table, $id) SET author = type::record($userTable, $userId);',
-    { table: 'post', id: postId, userTable: 'users', userId: recordIdPart(user.id, 'users') }
-  )
-
-  if (visibility === 'password' && passwordSource === 'user') {
-    await queryDb(
-      db,
-      'UPDATE type::record($table, $id) SET password_owner = type::record($userTable, $ownerId);',
-      { table: 'post', id: postId, userTable: 'users', ownerId: recordIdPart(user.id, 'users') }
-    )
-  }
 
   const normalizedPost = normalizePost(post)
   const incomingDoc = parseDoc(body.content_json)

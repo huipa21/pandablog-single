@@ -106,7 +106,6 @@
         <div class="pb-content-frame mx-auto">
           <div class="mb-4 space-y-3">
             <UAlert v-if="loadError" color="error" icon="i-lucide-circle-alert" :title="t('admin.editor.loadPostFailed')" />
-            <UAlert v-if="editorReadOnly" color="warning" icon="i-lucide-lock" :title="`Read-only: ${editLock.holderName.value || 'another editor'} is editing this post.`" />
           </div>
 
           <form class="pb-editor-grid-shell rounded-[var(--pb-radius-card-outer)] border border-[var(--pb-card-border)] bg-[var(--pb-card-bg)] px-4 py-5 shadow-[var(--pb-shadow-sm)] md:px-10 md:py-8" @submit.prevent="saveLocal()">
@@ -116,13 +115,12 @@
                 v-model="form.title"
                 type="text"
                 :placeholder="t('admin.editor.addTitle')"
-                :readonly="editorReadOnly"
                 class="w-full border-0 bg-transparent text-4xl font-semibold leading-tight tracking-normal text-[var(--pb-text)] outline-none placeholder:text-[var(--pb-text-placeholder)] md:text-5xl"
               >
               <div class="pb-editor-gutter" aria-hidden="true" />
             </div>
 
-            <BlockEditor ref="blockEditorRef" v-model="form.content" :use-inline-inserter="true" :readonly="editorReadOnly" />
+            <BlockEditor ref="blockEditorRef" v-model="form.content" :use-inline-inserter="true" />
           </form>
         </div>
       </main>
@@ -145,7 +143,6 @@
           :editor="activeEditor"
           :mode="rightPaneMode"
           :versions="versions"
-          :read-only="editorReadOnly"
           @close-versions="rightPaneMode = 'settings'"
           @diff-version="showVersionDiff"
           @restore-version="restoreSelectedVersion"
@@ -279,7 +276,7 @@
           <template #footer>
             <div class="flex flex-wrap justify-end gap-2">
               <UButton type="button" color="neutral" variant="ghost" @click="versionHistoryOpen = false">Close</UButton>
-              <UButton type="button" color="primary" icon="i-lucide-rotate-ccw" :disabled="!selectedVersion || editorReadOnly" @click="restoreFromDiff">{{ t('admin.editor.versionsPanel.restore') }}</UButton>
+              <UButton type="button" color="primary" icon="i-lucide-rotate-ccw" :disabled="!selectedVersion" @click="restoreFromDiff">{{ t('admin.editor.versionsPanel.restore') }}</UButton>
             </div>
           </template>
         </UCard>
@@ -317,7 +314,6 @@ const savingAction = ref<'save-local' | 'save-db' | 'publish' | 'unpublish' | nu
 const saveStatus = ref('')
 const saveStatusType = ref<'success' | 'error'>('success')
 const adminToast = useAdminToast()
-const editLock = useEditLock(id, sessionFetch as typeof $fetch)
 const currentStatus = ref<PostStatus>('draft')
 const blockEditorRef = ref<BlockEditorInstance | null>(null)
 const editorStore = useEditorStore()
@@ -350,7 +346,6 @@ const adminPostBreadcrumb = useState<{ id: string, slug: string } | null>('admin
 const saveStatusClass = computed(() =>
   saveStatusType.value === 'error' ? 'text-red-600' : 'text-[var(--pb-text-subtle)]'
 )
-const editorReadOnly = computed(() => editLock.locked.value)
 
 const editorShellStyle = computed(() => ({
   height: `calc(${editorVisualViewportHeight.value} - 3.5rem)`
@@ -399,7 +394,6 @@ const form = reactive<AdminPostEditorForm>({
   visibility: 'public',
   password: '',
   password_hint: '',
-  password_source: 'user',
   related_post_ids: [],
   related_posts: [],
   content: emptyDoc()
@@ -460,7 +454,6 @@ watch(post, (value) => {
   form.visibility = value.visibility ?? 'public'
   form.password_hint = value.password_hint ?? ''
   form.password = ''
-  form.password_source = value.password_source ?? 'custom'
   form.related_post_ids = [...(value.related_post_ids ?? [])]
   form.related_posts = [...(value.related_posts ?? [])]
   form.content = value.content_json
@@ -510,12 +503,6 @@ const needsLeaveDecision = computed(() => hasUnsavedDbChanges.value || isNewDraf
 const localStorageKey = computed(() => `pb-post-local-${id.value}`)
 
 function saveLocal() {
-  if (editorReadOnly.value) {
-    saveStatus.value = 'This post is open read-only because another editor holds the lock.'
-    saveStatusType.value = 'error'
-    return false
-  }
-
   savingAction.value = 'save-local'
   try {
     const payload = {
@@ -530,7 +517,6 @@ function saveLocal() {
       visibility: form.visibility,
       password: form.password,
       password_hint: form.password_hint,
-      password_source: effectivePasswordSource(),
       related_post_ids: form.related_post_ids,
       content_json: strippedContent(),
       savedAt: new Date().toISOString()
@@ -588,7 +574,6 @@ interface LocalDraftPayload {
   visibility?: string
   password?: string
   password_hint?: string
-  password_source?: string
   related_post_ids?: string[]
   content_json?: JsonContent
   savedAt?: string
@@ -599,8 +584,6 @@ interface PostVersionRecord {
   version: string
   datetime: string
   diff: Array<Record<string, unknown>>
-  ownerId: string | null
-  ownerName: string | null
 }
 
 type LocalConflictFieldKey = 'title' | 'slug' | 'summary' | 'cover_image' | 'category_ids' | 'tag_ids' | 'visibility' | 'password_hint' | 'related_post_ids' | 'content_json'
@@ -696,7 +679,6 @@ function restoreLocalDraft(local: LocalDraftPayload, markUnsaved: boolean) {
     visibility: local.visibility ?? form.visibility,
     password: local.password ?? '',
     password_hint: local.password_hint ?? form.password_hint,
-    password_source: local.password_source ?? form.password_source,
     related_post_ids: local.related_post_ids ?? form.related_post_ids,
     content: local.content_json ?? form.content
   })
@@ -759,7 +741,7 @@ async function showVersionDiff(version: PostVersionRecord) {
 // the user clicks Update; matches the local-draft workflow.
 async function restoreSelectedVersion(version?: PostVersionRecord) {
   const target = version ?? selectedVersion.value
-  if (!target || editorReadOnly.value) return
+  if (!target) return
   const detail = await fetchAdmin<{ content_json: JsonContent }>(`${apiPath.value}/versions/${encodeURIComponent(target.version)}`)
   form.content = detail.content_json
   versionHistoryOpen.value = false
@@ -772,7 +754,7 @@ async function restoreFromDiff() {
 
 async function deleteSelectedVersion(version?: PostVersionRecord) {
   const target = version ?? selectedVersion.value
-  if (!target || editorReadOnly.value) return
+  if (!target) return
   await fetchAdmin(`${apiPath.value}/versions/${encodeURIComponent(target.version)}`, { method: 'DELETE' })
   if (selectedVersion.value?.version === target.version) {
     selectedVersion.value = null
@@ -799,12 +781,6 @@ async function confirmPublishOrUpdate() {
 }
 
 async function save(nextStatus: PostStatus, action: 'save-db' | 'publish' | 'unpublish') {
-  if (editorReadOnly.value) {
-    saveStatus.value = 'This post is open read-only because another editor holds the lock.'
-    saveStatusType.value = 'error'
-    return false
-  }
-
   const wasPublished = currentStatus.value === 'published'
   savingAction.value = action
   saveStatus.value = t('admin.editor.saving')
@@ -826,7 +802,6 @@ async function save(nextStatus: PostStatus, action: 'save-db' | 'publish' | 'unp
         visibility: form.visibility,
         password: form.password,
         password_hint: form.password_hint,
-        password_source: effectivePasswordSource(),
         related_post_ids: form.related_post_ids,
         content_json: strippedContent()
       }
@@ -841,7 +816,6 @@ async function save(nextStatus: PostStatus, action: 'save-db' | 'publish' | 'unp
     form.tag_names = []
     form.visibility = saved.visibility ?? form.visibility
     form.password_hint = saved.password_hint ?? ''
-    form.password_source = saved.password_source ?? form.password_source
     form.related_post_ids = [...(saved.related_post_ids ?? form.related_post_ids)]
     form.related_posts = [...(saved.related_posts ?? form.related_posts)]
     post.value = saved
@@ -898,10 +872,6 @@ function postSaveTitle(action: 'save-db' | 'publish' | 'unpublish', wasPublished
 // save is already in flight, and only saves as draft (never publishes).
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
-  void editLock.acquire().catch((error) => {
-    adminToast.error(error, 'Could not acquire edit lock')
-  })
-
   // Restore local draft if available. When it diverges from the saved/published
   // version, surface a conflict diff and let the user choose instead of silently
   // overwriting the form content.
@@ -1020,7 +990,6 @@ function serializeDbPayload() {
     visibility: form.visibility,
     password: form.password,
     password_hint: form.password_hint,
-    password_source: effectivePasswordSource(),
     related_post_ids: form.related_post_ids,
     content_json: comparableContent(),
     status: currentStatus.value
@@ -1037,10 +1006,6 @@ function comparableContent() {
 // and trims edge whitespace, but keeps blockIds for stable server-side diffing.
 function strippedContent() {
   return normalizeDocForSave(form.content) ?? form.content
-}
-
-function effectivePasswordSource() {
-  return form.visibility === 'password' && form.password.length > 0 ? 'custom' : 'user'
 }
 
 function slugifyTitle(value: string) {

@@ -1,8 +1,8 @@
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { queryDb, useDb } from '../../../utils/db'
 
 export default defineEventHandler(async (event) => {
-  await requireContentManager(event)
+  await requireOwner(event)
   const id = (getRouterParam(event, 'id') ?? '').replace(/^media_smart_folder:/, '')
   const db = await useDb()
 

@@ -1,4 +1,4 @@
-import { requireContentManager } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { queryDb, queryDbRecord, useDb } from '../../utils/db'
 import { mediaNormalizeFileRecord, mediaNormalizeHash } from '../../utils/mediaLibrary'
 import { mediaRecordManageableByUser } from '../../utils/mediaPermissions'
@@ -8,7 +8,7 @@ import { mediaMetadataTags, mediaMetadataFolders } from '../../utils/media-metad
 import { firstRow } from '../../utils/surrealResult'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const id = mediaNormalizeHash(getRouterParam(event, 'id') ?? '')
   const body = await readBoundedJson(event, 16 * 1024)
   const db = await useDb()

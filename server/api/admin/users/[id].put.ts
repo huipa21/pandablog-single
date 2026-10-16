@@ -1,9 +1,9 @@
-import { requireAdminTier } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { assertCanCreateUserRole, assertCanManageTargetUser } from '../../../utils/user-management'
 import { findUserById, isUserRole, updateUser } from '../../../utils/users'
 
 export default defineEventHandler(async (event) => {
-  const actor = await requireAdminTier(event)
+  const actor = await requireOwner(event)
   const target = await findUserById(getRouterParam(event, 'id') ?? '')
   if (!target) {
     throw createError({ statusCode: 404, message: 'User not found' })

@@ -1,5 +1,5 @@
 import { queryDb, useDb } from '../../../utils/db'
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { normalizeCategory, normalizeTag } from '../../../utils/taxonomy'
 import { queryRows, stringifyRecordId } from '../../../utils/surrealResult'
 
@@ -43,7 +43,7 @@ const lengthBucketDefinitions = [
 ] satisfies Array<Omit<LengthBucket, 'posts' | 'percent'>>
 
 export default defineEventHandler(async (event) => {
-  await requireContentManager(event)
+  await requireOwner(event)
 
   const db = await useDb()
   const response = await queryDb(

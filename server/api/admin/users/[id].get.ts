@@ -1,9 +1,9 @@
-import { requireAdminTier } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { assertCanManageTargetUser } from '../../../utils/user-management'
 import { findUserById } from '../../../utils/users'
 
 export default defineEventHandler(async (event) => {
-  const actor = await requireAdminTier(event)
+  const actor = await requireOwner(event)
   const user = await findUserById(getRouterParam(event, 'id') ?? '')
 
   if (!user) {

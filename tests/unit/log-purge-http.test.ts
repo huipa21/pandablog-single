@@ -4,8 +4,8 @@ import type { AddressInfo } from 'node:net'
 import { createApp, createError, createRouter, defineEventHandler, getRequestURL, getRouterParams, readBody, toNodeListener } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ requireSuperadmin: vi.fn(), purgeLogType: vi.fn() }))
-vi.mock('../../server/utils/auth', () => ({ requireSuperadmin: mocks.requireSuperadmin }))
+const mocks = vi.hoisted(() => ({ requireOwner: vi.fn(), purgeLogType: vi.fn() }))
+vi.mock('../../server/utils/auth', () => ({ requireOwner: mocks.requireOwner }))
 vi.mock('../../server/utils/logging', () => ({ purgeLogType: mocks.purgeLogType }))
 vi.mock('../../server/utils/db', () => ({ useDb: vi.fn(), queryDb: vi.fn() }))
 
@@ -16,7 +16,7 @@ beforeEach(async () => {
   vi.resetAllMocks()
   for (const [name, value] of Object.entries({ createError, defineEventHandler, getRequestURL, getRouterParams, readBody })) vi.stubGlobal(name, value)
   vi.stubGlobal('useRuntimeConfig', () => ({ public: {} }))
-  mocks.requireSuperadmin.mockResolvedValue({ role: 'superadmin' })
+  mocks.requireOwner.mockResolvedValue({ id: 'users:admin', username: 'admin' })
   mocks.purgeLogType.mockResolvedValue(7)
   const app = createApp()
   const router = createRouter()
@@ -41,7 +41,7 @@ describe('log purge HTTP routing', () => {
     const response = await purge(type)
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ok: true, deleted: 7 })
-    expect(mocks.requireSuperadmin).toHaveBeenCalledOnce()
+    expect(mocks.requireOwner).toHaveBeenCalledOnce()
     expect(mocks.purgeLogType).toHaveBeenCalledExactlyOnceWith(type)
     // H3 caches the fallback handler on the static route. Subsequent calls must work too.
     expect((await purge(type)).status).toBe(200)
@@ -69,7 +69,7 @@ describe('log purge HTTP routing', () => {
   })
 
   it.each([401, 403])('enforces authorization before considering the pathname (HTTP %i)', async (statusCode) => {
-    mocks.requireSuperadmin.mockRejectedValue(createError({ statusCode, message: 'Denied' }))
+    mocks.requireOwner.mockRejectedValue(createError({ statusCode, message: 'Denied' }))
     const response = await purge('access')
     expect(response.status).toBe(statusCode)
     await response.text()

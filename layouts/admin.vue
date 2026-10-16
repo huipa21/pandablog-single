@@ -39,7 +39,7 @@
           <div class="hidden md:block">
             <BlogSearchBar :key="`admin-search-${locale}`" variant="header" />
           </div>
-          <UDropdownMenu v-if="canCreateContent" :items="quickNewItems">
+          <UDropdownMenu v-if="isLoggedIn" :items="quickNewItems">
             <UButton
               type="button"
               variant="ghost"
@@ -182,12 +182,9 @@ import { ADMIN_COLOR_MODE_KEY, DEFAULT_ADMIN_COLOR_MODE } from '~/utils/themeMod
 
 const ADMIN_POST_DISPLAY_MODE_KEY = 'admin_post_display_mode'
 
-type AdminRole = 'superadmin' | 'admin' | 'author' | 'viewer'
-
 interface AdminSessionUser {
   id: string
   username: string
-  role: AdminRole
   display_name?: string | null
   avatar_url?: string | null
 }
@@ -205,11 +202,10 @@ const sessionFetch = useSessionFetch()
 const { data: authSession } = await useAsyncData('admin-layout-session', () => sessionFetch<{ loggedIn: boolean, user: AdminSessionUser | null }>('/api/auth/session'), {
   default: () => ({ loggedIn: false, user: null })
 })
-const adminRole = computed<AdminRole | null>(() => authSession.value?.user?.role ?? null)
-const isSuperadmin = computed(() => adminRole.value === 'superadmin')
+const isLoggedIn = computed(() => Boolean(authSession.value?.user))
 const defaultAdminSettings = () => ({ settings: { [ADMIN_COLOR_MODE_KEY]: DEFAULT_ADMIN_COLOR_MODE, [ADMIN_LOCALE_KEY]: DEFAULT_ADMIN_LOCALE, [ADMIN_POST_DISPLAY_MODE_KEY]: 'slug' } })
 const { data: adminSettings } = await useAsyncData('admin-layout-settings', () => {
-  if (!isSuperadmin.value) {
+  if (!isLoggedIn.value) {
     return Promise.resolve(defaultAdminSettings())
   }
 
@@ -231,7 +227,7 @@ const {
   defaultMode: DEFAULT_ADMIN_COLOR_MODE,
   initialMode: () => adminSettings.value?.settings?.[ADMIN_COLOR_MODE_KEY],
   persist: async (mode) => {
-    if (!isSuperadmin.value) {
+    if (!isLoggedIn.value) {
       return
     }
 
@@ -252,7 +248,6 @@ const accountUser = computed(() => authSession.value?.user ?? null)
 const accountName = computed(() => accountUser.value?.display_name || accountUser.value?.username || t('admin.layout.account'))
 const accountAvatarUrl = computed(() => accountUser.value?.avatar_url || '')
 const accountInitials = computed(() => initialsFor(accountName.value))
-const canCreateContent = computed(() => adminRole.value === 'superadmin' || adminRole.value === 'admin' || adminRole.value === 'author')
 const adminToast = useAdminToast()
 const creatingQuickPost = ref(false)
 const quickNewItems = computed(() => [[
@@ -260,7 +255,7 @@ const quickNewItems = computed(() => [[
   { label: t('public.nav.newMedia'), icon: 'i-lucide-upload', onSelect: openMediaUploader }
 ]])
 const accountMenuItems = computed(() => [[
-  { label: t('admin.layout.myProfile'), icon: 'i-lucide-user', onSelect: () => navigateTo('/profile') }
+  { label: t('admin.layout.myProfile'), icon: 'i-lucide-user', onSelect: () => navigateTo('/admin/settings/account') }
 ], [
   { label: t('admin.layout.signOut'), icon: 'i-lucide-log-out', color: 'error' as const, onSelect: logout }
 ]])
@@ -318,49 +313,35 @@ const navSections = computed(() => {
     }
   ]
 
-  if (adminRole.value === 'superadmin' || adminRole.value === 'admin' || adminRole.value === 'author') {
-    sections.push({
-      label: t('admin.nav.posts'),
-      items: [
-        { to: '/admin/posts', label: t('admin.nav.posts'), icon: 'i-lucide-file-text' },
-        { to: '/admin/categories', label: t('admin.nav.categories'), icon: 'i-lucide-folder' },
-        { to: '/admin/tags', label: t('admin.nav.tags'), icon: 'i-lucide-tags' },
-        { to: '/admin/media', label: t('admin.nav.mediaLibrary'), icon: 'i-lucide-image' }
-      ]
-    })
-  }
+  sections.push({
+    label: t('admin.nav.posts'),
+    items: [
+      { to: '/admin/posts', label: t('admin.nav.posts'), icon: 'i-lucide-file-text' },
+      { to: '/admin/categories', label: t('admin.nav.categories'), icon: 'i-lucide-folder' },
+      { to: '/admin/tags', label: t('admin.nav.tags'), icon: 'i-lucide-tags' },
+      { to: '/admin/media', label: t('admin.nav.mediaLibrary'), icon: 'i-lucide-image' }
+    ]
+  })
 
-  if (adminRole.value === 'superadmin' || adminRole.value === 'admin') {
-    sections.push({
-      label: t('admin.nav.people'),
-      items: [
-        { to: '/admin/users', label: t('admin.nav.users'), icon: 'i-lucide-users' }
-      ]
-    })
-  }
-
-  if (adminRole.value === 'superadmin') {
-    const settingsItems = [
+  sections.push({
+    label: t('admin.nav.settings'),
+    items: [
       { to: '/admin/settings/general', label: t('admin.nav.general'), icon: 'i-lucide-sliders-horizontal' },
       { to: '/admin/settings/profile', label: t('admin.nav.profile'), icon: 'i-lucide-user' },
+      { to: '/admin/settings/account', label: t('admin.nav.account'), icon: 'i-lucide-user-cog' },
       { to: '/admin/settings/themes', label: t('admin.nav.themes'), icon: 'i-lucide-palette' },
       { to: '/admin/settings/analytics', label: t('admin.nav.analyticsSettings'), icon: 'i-lucide-chart-no-axes-combined' },
       { to: '/admin/settings/security', label: t('admin.nav.security'), icon: 'i-lucide-shield-check' },
       { to: '/admin/settings/system', label: t('admin.nav.system'), icon: 'i-lucide-monitor-cog' }
     ]
+  })
 
-    sections.push({
-      label: t('admin.nav.settings'),
-      items: settingsItems
-    })
-
-    sections.push({
-      label: t('admin.nav.tools'),
-      items: [
-        { to: '/admin/backups', label: t('admin.nav.backups'), icon: 'i-lucide-database-backup' }
-      ]
-    })
-  }
+  sections.push({
+    label: t('admin.nav.tools'),
+    items: [
+      { to: '/admin/backups', label: t('admin.nav.backups'), icon: 'i-lucide-database-backup' }
+    ]
+  })
 
   return sections
 })
@@ -372,8 +353,8 @@ const breadcrumbLabels = computed<Record<string, string>>(() => ({
   categories: t('admin.nav.categories'),
   tags: t('admin.nav.tags'),
   media: t('admin.nav.mediaLibrary'),
-  users: t('admin.nav.users'),
   settings: t('admin.nav.settings'),
+  account: t('admin.nav.account'),
   general: t('admin.nav.general'),
   site: t('admin.nav.site'),
   profile: t('admin.nav.profile'),

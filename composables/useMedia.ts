@@ -30,7 +30,6 @@ interface MediaListOptions {
   type?: 'all' | MediaFileType
   folder?: string
   tag?: string
-  owner?: string
   mime_type?: string
   uploaded_from?: string
   uploaded_to?: string
@@ -63,7 +62,6 @@ export function useMedia() {
     if (options.type && options.type !== 'all') query.set('type', options.type)
     if (options.folder) query.set('folder', options.folder)
     if (options.tag) query.set('tag', options.tag)
-    if (options.owner) query.set('owner', options.owner)
     if (options.mime_type) query.set('mime_type', options.mime_type)
     if (options.uploaded_from) query.set('uploaded_from', options.uploaded_from)
     if (options.uploaded_to) query.set('uploaded_to', options.uploaded_to)

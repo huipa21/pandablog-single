@@ -1,11 +1,11 @@
 import { queryDb, useDb } from '../../../utils/db'
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { normalizeTag } from '../../../utils/taxonomy'
 import { queryRows, stringifyRecordId } from '../../../utils/surrealResult'
 import type { TagRecord } from '~/types/content'
 
 export default defineEventHandler(async (event) => {
-  await requireContentManager(event)
+  await requireOwner(event)
 
   const db = await useDb()
   const baseResponse = await queryDb(

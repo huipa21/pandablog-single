@@ -123,21 +123,6 @@
         />
       </label>
 
-      <label class="grid gap-1.5">
-        <span class="search-advanced-label">{{ t('public.search.advanced.authors') }}</span>
-        <UInputMenu
-          v-model="authors"
-          :items="authorItems"
-          value-key="value"
-          multiple
-          open-on-click
-          :loading="optionsPending"
-          :placeholder="authors.length ? '' : t('public.search.advanced.authorsPlaceholder')"
-          class="w-full"
-          data-testid="search-advanced-authors"
-        />
-      </label>
-
       <label class="grid gap-1.5 sm:col-span-2">
         <span class="search-advanced-label">{{ t('public.search.advanced.date') }}</span>
         <USelect
@@ -205,7 +190,6 @@ const rows = ref<KeywordRow[]>([])
 const groupOp = ref<SearchKeywordOperator>('and')
 const categories = ref<string[]>([])
 const tags = ref<string[]>([])
-const authors = ref<string[]>([])
 const datePreset = ref<SearchDatePreset | 'any'>('any')
 const start = ref('')
 const end = ref('')
@@ -222,7 +206,6 @@ function syncFromCriteria(criteria: AdvancedSearchCriteria) {
   groupOp.value = criteria.groupOp
   categories.value = [...criteria.categories]
   tags.value = [...criteria.tags]
-  authors.value = [...criteria.authors]
   datePreset.value = criteria.date || 'any'
   start.value = criteria.start
   end.value = criteria.end
@@ -258,11 +241,6 @@ const tagItems = computed(() => withSelected(
   tags.value,
   (value) => ({ label: value, value })
 ))
-const authorItems = computed(() => withSelected(
-  options.value.authors.map((author) => ({ label: author.name, value: author.id })),
-  authors.value,
-  (value) => ({ label: t('public.search.advanced.unknownAuthor'), value })
-))
 
 const dateItems = computed(() => [
   { label: t('public.search.advanced.dateAny'), value: 'any' as const },
@@ -295,7 +273,6 @@ function buildCriteria(): AdvancedSearchCriteria {
     groupOp: groupOp.value,
     categories: [...categories.value],
     tags: [...tags.value],
-    authors: [...authors.value],
     date,
     start: date === 'custom' ? start.value : '',
     end: date === 'custom' ? end.value : '',

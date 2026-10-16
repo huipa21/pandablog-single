@@ -1,11 +1,10 @@
 import { queryDbRecord, useDb } from '../../../utils/db'
 import { recordIdPart } from '../../../utils/surrealResult'
-import { requireContentManager } from '../../../utils/auth'
-import { assertCanManagePostRecord } from '../../../utils/permissions'
+import { requireOwner } from '../../../utils/auth'
 import { archiveOrDeletePostById } from '../../../utils/postArchiveDelete'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  await requireOwner(event)
 
   const id = recordIdPart(getRouterParam(event, 'id') ?? '', 'post')
   if (!id) {
@@ -17,7 +16,6 @@ export default defineEventHandler(async (event) => {
   if (!existing) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
-  assertCanManagePostRecord(user, existing)
 
   const result = await archiveOrDeletePostById(db, id)
 

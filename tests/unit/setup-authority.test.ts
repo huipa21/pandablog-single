@@ -11,7 +11,7 @@ describe('one-time setup persistent authority (owned fixtures)', () => {
     const owned = await createOwnedStorage()
     try {
       await writeFile(owned.path('.job.lock'), 'ordinary partially published job record')
-      query.mockResolvedValue([[{id: 'users:admin', active: true, role: 'superadmin'}], []])
+      query.mockResolvedValue([[{id: 'users:admin', active: true}], []])
       const authority = new SetupAuthority(owned.path('authority.json'), owned.path('.job.lock'))
       expect(await authority.status({} as never)).toEqual({completed: true, recoveryRequired: false})
       await expect(authority.reserve({} as never)).rejects.toMatchObject({statusCode: 409})
@@ -30,7 +30,7 @@ describe('one-time setup persistent authority (owned fixtures)', () => {
       const restarted = new SetupAuthority(path, lock)
       expect(await restarted.status({} as never)).toEqual({completed: true, recoveryRequired: true})
       await expect(restarted.reserve({} as never)).rejects.toMatchObject({statusCode: 503})
-      query.mockImplementation(async (_db, sql: string) => sql.includes('one-time') ? [] : sql.includes('SELECT id, active') ? [[{id: 'users:admin', active: true, role: 'superadmin'}], []] : [[{id: 'users:admin'}], [{id: 'app_settings:claim'}]])
+      query.mockImplementation(async (_db, sql: string) => sql.includes('one-time') ? [] : sql.includes('SELECT id, active') ? [[{id: 'users:admin', active: true}], []] : [[{id: 'users:admin'}], [{id: 'app_settings:claim'}]])
       expect(await restarted.status({} as never)).toEqual({completed: true, recoveryRequired: false})
       query.mockResolvedValue([[], []]) // restore emptied both tables, removed all DB evidence
       expect(await restarted.status({} as never)).toEqual({completed: true, recoveryRequired: true})

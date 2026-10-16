@@ -25,7 +25,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
-  const session = await sessionFetch<{ loggedIn: boolean, user: { role?: string } | null }>('/api/auth/session').catch(() => null)
+  const session = await sessionFetch<{ loggedIn: boolean }>('/api/auth/session').catch(() => null)
 
   // Nuxt dev server restarts can briefly make API routes unavailable.
   // Do not force a logout redirect on transient transport/runtime errors.
@@ -36,22 +36,4 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!session.loggedIn) {
     return navigateTo({ path: '/login', query: { redirect: to.fullPath } })
   }
-
-  const role = session.user?.role
-  if (role === 'viewer') {
-    return navigateTo('/')
-  }
-
-  if (to.path.startsWith('/admin/settings') || to.path.startsWith('/admin/logs') || to.path.startsWith('/admin/dashboard/analytics')) {
-    if (role !== 'superadmin') {
-      return navigateTo('/admin/dashboard')
-    }
-  }
-
-  if (to.path.startsWith('/admin/users')) {
-    if (role !== 'superadmin' && role !== 'admin') {
-      return navigateTo('/admin/dashboard')
-    }
-  }
-
 })

@@ -1,5 +1,5 @@
 import * as path from 'node:path'
-import { requireSuperadmin } from '../../../../../utils/auth'
+import { requireOwner } from '../../../../../utils/auth'
 import { getBackup, backupIdPart } from '../../../../../utils/backups/registry'
 import { BACKUPS_ROOT } from '../../../../../utils/backups/config'
 import { supportedFull } from '../../../../../utils/backups/contracts'
@@ -9,7 +9,7 @@ import { sendBackupFile, rejectConsolidation } from '../../../../../utils/backup
 import { BACKUP_LIMITS } from '../../../../../utils/backups/streams'
 
 export default defineEventHandler(async event => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   rejectConsolidation(event)
   const id = getRouterParam(event, 'id') ?? '', part = backupIdPart(id)
   const release = await acquireSnapshotRead(id)

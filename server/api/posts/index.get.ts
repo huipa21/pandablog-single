@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { queryDb, useDb } from '../../utils/db'
 import { firstRow, queryRows, recordIdPart, stringifyRecordId } from '../../utils/surrealResult'
-import { isAdminAuthenticated } from '../../utils/auth'
+import { isOwner } from '../../utils/auth'
 import { PUBLIC_LIST_CACHE_SECONDS, publicCacheKey, shouldBypassPublicCache } from '../../utils/public-cache'
 import type { PostListItem, PostVisibility } from '~/types/content'
 
@@ -33,7 +33,7 @@ async function handlePostList(event: H3Event) {
   const start = Math.max(Number(query.start ?? 0), 0)
   const tag = String(query.tag ?? '').trim()
   const category = String(query.category ?? '').trim()
-  const isAdmin = await isAdminAuthenticated(event)
+  const isAdmin = await isOwner(event)
 
   const visibilityFilter = isAdmin
     ? ''

@@ -438,7 +438,7 @@ const HELP = {
 
   Uses Argon2id and atomically updates users.password_hash, auth_epoch and
   updated_at. Existing sessions and trusted devices are invalidated. Unknown
-  users are not created; roles, active status and MFA are not changed.
+  users are not created; active status and MFA are not changed.
 
   Connects directly to SurrealDB using NUXT_SURREAL_URL, NAMESPACE, DATABASE,
   APP_USER and APP_PASSWORD (all prefixed NUXT_SURREAL_). Reads the app-root

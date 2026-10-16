@@ -10,7 +10,7 @@ import { WriteBarrier } from '../../server/utils/maintenance'
 const current = vi.hoisted(() => ({store: null as JobStore | null, barrier: null as WriteBarrier | null, auth: vi.fn(), visibility: vi.fn()}))
 vi.mock('../../server/utils/backups/jobMutex', async importOriginal => ({...await importOriginal(), getActiveJob: () => current.store?.getActiveJob(), get jobStore() {return current.store}}))
 vi.mock('../../server/utils/maintenance', async importOriginal => ({...await importOriginal(), get writeBarrier() {return current.barrier}}))
-vi.mock('../../server/utils/auth', () => ({requireSuperadmin: current.auth, isAuthenticated: current.auth}))
+vi.mock('../../server/utils/auth', () => ({requireOwner: current.auth, isOwner: current.auth}))
 vi.mock('../../server/utils/visibility', () => ({getSiteVisibility: current.visibility}))
 
 describe('exact job-scoped restore status on real H3', () => {

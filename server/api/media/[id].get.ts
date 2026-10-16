@@ -1,10 +1,10 @@
-import { requireContentManager } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { queryDbRecord, useDb } from '../../utils/db'
 import { mediaNormalizeFileRecord, mediaNormalizeHash } from '../../utils/mediaLibrary'
 import { mediaRecordVisibleToUser } from '../../utils/mediaPermissions'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const id = mediaNormalizeHash(getRouterParam(event, 'id') ?? '')
   const db = await useDb()
   const record = await queryDbRecord(db, 'files', id)

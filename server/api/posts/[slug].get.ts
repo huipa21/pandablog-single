@@ -3,8 +3,7 @@ import { normalizePost } from '../../utils/content'
 import { firstRow, queryRows, recordIdPart, stringifyRecordId } from '../../utils/surrealResult'
 import { evaluatePostAccess, sanitizePost, type PostVisibility } from '../../utils/visibility'
 import { buildDocFromBlocks, loadBlocksForPost } from '../../utils/blocks'
-import { getSessionUser } from '../../utils/auth'
-import { assertCanManagePostRecord } from '../../utils/permissions'
+import { isOwner } from '../../utils/auth'
 import { PUBLIC_POST_CACHE_SECONDS, publicCacheKey, shouldBypassPublicCache } from '../../utils/public-cache'
 
 export default defineEventHandler(async (event) => {
@@ -37,13 +36,13 @@ async function handlePost(event: Parameters<typeof shouldBypassPublicCache>[0]) 
   }
 
   const db = await useDb()
-  const contentManager = await getContentManagerSession(event)
-  const visibleStatuses = contentManager ? ['published', 'draft'] : ['published']
+  const owner = await isOwner(event)
+  const visibleStatuses = owner ? ['published', 'draft'] : ['published']
   const response = await queryDb(
     db,
-    `SELECT id, title, slug, summary, status, cover_image, author, author_username,
+    `SELECT id, title, slug, summary, status, cover_image,
       published_at, created_at, updated_at, view_count, word_count, cjk_char_count,
-      visibility, password_hint, password_source, password_owner
+      visibility, password_hint
      FROM post WHERE slug = $slug AND status IN $visibleStatuses LIMIT 1;`,
     { slug, visibleStatuses }
   )
@@ -53,19 +52,9 @@ async function handlePost(event: Parameters<typeof shouldBypassPublicCache>[0]) 
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
 
-  const isUnpublishedPreview = post.status !== 'published'
-  if (isUnpublishedPreview) {
-    if (!contentManager) {
-      throw createError({ statusCode: 404, message: 'Post not found' })
-    }
-    assertCanManagePostRecord(contentManager, post)
-  }
-
   const access = await evaluatePostAccess(event, {
     id: stringifyRecordId(post.id),
-    visibility: toPostVisibility(post.visibility),
-    author: post.author,
-    author_username: typeof post.author_username === 'string' ? post.author_username : null
+    visibility: toPostVisibility(post.visibility)
   })
 
   if (access.state === 'site-private') {
@@ -104,15 +93,6 @@ async function handlePost(event: Parameters<typeof shouldBypassPublicCache>[0]) 
 
 function toPostVisibility(value: unknown): PostVisibility {
   return value === 'private' || value === 'password' ? value : 'public'
-}
-
-async function getContentManagerSession(event: Parameters<typeof getSessionUser>[0]) {
-  const user = await getSessionUser(event)
-  return user && isContentManagerRole(user.role) ? user : null
-}
-
-function isContentManagerRole(value: unknown) {
-  return value === 'superadmin' || value === 'admin' || value === 'author'
 }
 
 async function loadTagsForPost(db: Awaited<ReturnType<typeof useDb>>, postRecordId: string) {

@@ -1,9 +1,9 @@
-import { requireContentManager } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { useDb } from '../../utils/db'
 import { mediaSearchFileRecords } from '../../utils/mediaLibrary'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const query = getQuery(event)
   const db = await useDb()
   const searchRegex = query.search_regex === 'true'
@@ -30,7 +30,6 @@ export default defineEventHandler(async (event) => {
     mime_type: stringQuery(query.mime_type),
     folder: stringQuery(query.folder),
     tag: stringQuery(query.tag),
-    owner: searchTextQuery(query.owner),
     uploaded_from: stringQuery(query.uploaded_from),
     uploaded_to: stringQuery(query.uploaded_to),
     orphan: query.orphan === 'true',

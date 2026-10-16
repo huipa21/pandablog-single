@@ -2,7 +2,6 @@ import { randomBytes } from 'node:crypto'
 import { mediaReserveReferences } from './referenceTracker'
 import { queryDb, useDb } from './db'
 import { queryRows } from './surrealResult'
-import { createUserWithPasswordHash, findUserByUsername, setUserPasswordHash, updateUser } from './users'
 import type { JsonContent } from '~/types/content'
 import { ADMIN_LOCALE_KEY, normalizeAdminLocale, type SupportedLocale } from '~/utils/adminLocale'
 import {
@@ -89,8 +88,6 @@ const SECRET_SETTING_KEYS = [
 ] as const
 
 export const ADMIN_USERNAME = 'admin'
-const ADMIN_USERNAME_KEY = 'admin_username'
-const ADMIN_PASSWORD_HASH_KEY = 'admin_password_hash'
 const SETUP_COMPLETED_KEY = 'setup_completed'
 
 export type PublicSettingKey = typeof PUBLIC_SETTING_KEYS[number]
@@ -121,12 +118,6 @@ export interface SecuritySettings {
   security_alert_on_lockout: boolean
   security_alert_on_new_login: boolean
   security_mfa_required_for_admins: boolean
-}
-
-export interface AdminCredentials {
-  username: typeof ADMIN_USERNAME
-  passwordHash: string
-  setupCompleted: boolean
 }
 
 const APP_SETTINGS_TABLE = 'app_settings'
@@ -483,52 +474,6 @@ export function getAnalyticsHashSalt(): Promise<string> {
     return row.value
   })().finally(() => {analyticsSaltFlight = undefined})
   return analyticsSaltFlight
-}
-
-export async function readAdminCredentials(): Promise<AdminCredentials> {
-  const adminUser = await findUserByUsername(ADMIN_USERNAME)
-  if (adminUser?.password_hash && adminUser.active) {
-    return {
-      username: ADMIN_USERNAME,
-      passwordHash: adminUser.password_hash,
-      setupCompleted: true
-    }
-  }
-
-  const settings = await readRawAppSettings([ADMIN_PASSWORD_HASH_KEY, SETUP_COMPLETED_KEY])
-  const passwordHash = stringValue(settings[ADMIN_PASSWORD_HASH_KEY])
-
-  return {
-    username: ADMIN_USERNAME,
-    passwordHash,
-    setupCompleted: settings[SETUP_COMPLETED_KEY] === true && Boolean(passwordHash)
-  }
-}
-
-export async function writeAdminCredentials(passwordHash: string): Promise<AdminCredentials> {
-  const db = await useDb()
-  const existing = await findUserByUsername(ADMIN_USERNAME)
-  if (existing) {
-    await setUserPasswordHash(existing.id, passwordHash)
-    await updateUser(existing.id, {
-      role: 'superadmin',
-      display_name: existing.display_name || 'Administrator',
-      active: true
-    })
-  } else {
-    await createUserWithPasswordHash({
-      username: ADMIN_USERNAME,
-      password_hash: passwordHash,
-      role: 'superadmin',
-      display_name: 'Administrator',
-      active: true
-    })
-  }
-
-  await upsertAppSetting(db, ADMIN_USERNAME_KEY, ADMIN_USERNAME)
-  await upsertAppSetting(db, ADMIN_PASSWORD_HASH_KEY, passwordHash)
-  await upsertAppSetting(db, SETUP_COMPLETED_KEY, true)
-  return readAdminCredentials()
 }
 
 export async function isSetupCompleted(): Promise<boolean> {

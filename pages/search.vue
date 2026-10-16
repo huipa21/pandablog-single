@@ -173,13 +173,13 @@ const resultSummary = computed(() => {
   return t(total === 1 ? 'public.search.filterSummaryOne' : 'public.search.filterSummary', { total })
 })
 
-// Names for category / tag / author chips come from the autocomplete data.
+// Names for category / tag chips come from the autocomplete data.
 onMounted(() => {
-  if (criteria.value.categories.length || criteria.value.tags.length || criteria.value.authors.length) {
+  if (criteria.value.categories.length || criteria.value.tags.length) {
     void loadSearchOptions()
   }
 })
-watch(() => criteria.value.categories.length + criteria.value.tags.length + criteria.value.authors.length, (count) => {
+watch(() => criteria.value.categories.length + criteria.value.tags.length, (count) => {
   if (count) void loadSearchOptions()
 })
 
@@ -188,7 +188,6 @@ const chips = computed<CriteriaChip[]>(() => {
   const list: CriteriaChip[] = []
   const categoryLabels = new Map(searchOptions.value.categories.map((item) => [item.slug, item.label]))
   const tagLabels = new Map(searchOptions.value.tags.map((item) => [item.slug, item.name]))
-  const authorLabels = new Map(searchOptions.value.authors.map((item) => [item.id, item.name]))
 
   current.groups.forEach((group, index) => {
     list.push({
@@ -212,14 +211,6 @@ const chips = computed<CriteriaChip[]>(() => {
       label: t('public.search.chips.tag'),
       value: tagLabels.get(slug) ?? slug,
       remove: (value) => ({ ...value, tags: value.tags.filter((item) => item !== slug) })
-    })
-  }
-  for (const id of current.authors) {
-    list.push({
-      key: `author-${id}`,
-      label: t('public.search.chips.author'),
-      value: authorLabels.get(id) ?? t('public.search.advanced.unknownAuthor'),
-      remove: (value) => ({ ...value, authors: value.authors.filter((item) => item !== id) })
     })
   }
   if (hasSearchDateRange(current)) {

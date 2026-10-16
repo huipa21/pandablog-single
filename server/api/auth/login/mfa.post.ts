@@ -77,12 +77,12 @@ export default defineEventHandler(async (event) => {
     action: 'auth.login',
     resource_type: 'session',
     resource_id: user.id,
-    metadata: { username: user.username, role: user.role, mfa: true, backup_code: usedBackupCode, trusted_device: body?.trustDevice === true || reboundTrustedDevice },
+    metadata: { username: user.username, mfa: true, backup_code: usedBackupCode, trusted_device: body?.trustDevice === true || reboundTrustedDevice },
     description: 'User signed in'
   })
   dispatchSecurityAlert('login.success', alertDetailsFromEvent(event, {
     username: user.username,
-    reason: `Role: ${user.role}${usedBackupCode ? ' (MFA backup code)' : ' (MFA)'}`
+    reason: usedBackupCode ? 'MFA backup code' : 'MFA'
   }))
 
   return { user, backup_codes_remaining: usedBackupCode ? state.backupCodes.length - 1 : state.backupCodes.length }

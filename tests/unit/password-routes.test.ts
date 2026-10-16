@@ -6,7 +6,7 @@ const state = vi.hoisted(() => ({ verify: vi.fn(async () => true), mfa: false, p
 vi.mock('../../server/utils/activity', () => ({recordActivity: vi.fn()}))
 vi.mock('../../server/utils/notify/security-alert', () => ({dispatchSecurityAlert: vi.fn(), alertDetailsFromEvent: vi.fn()}))
 vi.mock('../../server/utils/settings', () => ({getRuntimeFlags: () => ({trust_proxy_headers: true}), isSetupCompleted: async () => true, getSecuritySettings: () => ({})}))
-vi.mock('../../server/utils/users', () => ({findUserByUsername: async (username: string) => ({id: `users:${username}`, username, active: true, role: 'viewer', auth_epoch: 'a'.repeat(48)}), verifyUserPassword: state.verify, toSessionUser: (user: unknown) => user, touchUserLogin: async () => {}}))
+vi.mock('../../server/utils/users', () => ({findUserByUsername: async (username: string) => ({id: `users:${username}`, username, active: true, auth_epoch: 'a'.repeat(48)}), verifyUserPassword: state.verify, toSessionUser: (user: unknown) => user, touchUserLogin: async () => {}}))
 vi.mock('../../server/utils/mfa/store', () => ({getUserMfaState: async () => ({enabled: state.mfa})}))
 vi.mock('../../server/utils/mfa/session', () => ({setMfaPending: state.pending}))
 vi.mock('../../server/utils/mfa/trusted-devices', () => ({findMatchingTrustedDevice: async () => null, refreshTrustedDevice: vi.fn(), resolveTrustedDeviceContext: vi.fn(), trustedDeviceContextMatches: vi.fn()}))

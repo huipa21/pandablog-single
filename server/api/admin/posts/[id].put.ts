@@ -1,8 +1,7 @@
 import { queryDb, queryDbRecord, useDb } from '../../../utils/db'
 import { buildPostPayload, normalizePost, stringOrNull } from '../../../utils/content'
 import { firstRow, recordIdPart } from '../../../utils/surrealResult'
-import { requireContentManager } from '../../../utils/auth'
-import { assertCanManagePostRecord } from '../../../utils/permissions'
+import { requireOwner } from '../../../utils/auth'
 import { assertPostSlugAvailable, uniquePostSlug } from '../../../utils/posts'
 import { hashPostPassword } from '../../../utils/post-password'
 import { readPostTaxonomy, syncPostTaxonomy } from '../../../utils/taxonomy'
@@ -20,7 +19,7 @@ import { syncPostSearchTerms } from '../../../utils/searchTerms'
 import type { JsonContent, PostVisibility } from '~/types/content'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const id = recordIdPart(getRouterParam(event, 'id') ?? '', 'post')
   const body = await readBody<Record<string, unknown>>(event)
   const db = await useDb()
@@ -29,14 +28,13 @@ export default defineEventHandler(async (event) => {
   if (!existing) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
-  assertCanManagePostRecord(user, existing)
 
   const previousPost = normalizePost(existing)
   const previousBlocks = await loadBlocksForPost(db, previousPost.id)
   const previousDoc = buildDocFromBlocks(previousBlocks)
 
   const merged = { ...existing, ...body }
-  const payload = buildPostPayload(merged, user.role === 'author' ? user.username : previousPost.author_username)
+  const payload = buildPostPayload(merged)
 
   if (payload.status === 'published' && !payload.title) {
     throw createError({ statusCode: 400, message: 'Title is required' })
@@ -51,17 +49,12 @@ export default defineEventHandler(async (event) => {
   if (!previousPost.has_versioning && payload.status === 'published') {
     payload.has_versioning = true
   }
-  const { updates: visibilityUpdate, ownerAction } = await resolveVisibilityUpdate(body, existing, user.id)
+  const visibilityUpdate = await resolveVisibilityUpdate(body, existing)
   const clears = cleanOptionalFieldClears(body)
 
   const statements: string[] = ['UPDATE type::record($table, $id) MERGE $post;']
   if (clears) {
     statements.push(`UPDATE type::record($table, $id) ${clears};`)
-  }
-  if (ownerAction?.kind === 'set') {
-    statements.push('UPDATE type::record($table, $id) SET password_owner = type::record($userTable, $ownerId), password_hash = NONE;')
-  } else if (ownerAction?.kind === 'clear') {
-    statements.push('UPDATE type::record($table, $id) SET password_owner = NONE;')
   }
   const updateSql = statements.join('\n')
 
@@ -72,10 +65,6 @@ export default defineEventHandler(async (event) => {
       ...payload,
       ...visibilityUpdate
     }
-  }
-  if (ownerAction?.kind === 'set') {
-    params.userTable = 'users'
-    params.ownerId = ownerAction.userId
   }
 
   await mediaReserveReferences(db, previousPost.id, [payload.cover_image, Object.prototype.hasOwnProperty.call(body, 'content_json') ? parseDoc(body.content_json) : previousDoc], user)
@@ -96,8 +85,7 @@ export default defineEventHandler(async (event) => {
     const incomingDoc = parseDoc(body.content_json)
     const incomingBlocks = extractBlocksFromDoc(incomingDoc)
     blocks = await syncPostBlocks(db, normalizedPost.id, incomingBlocks, previousBlocks, {
-      shouldSnapshot: previousPost.has_versioning === true,
-      userId: recordIdPart(user.id, 'users')
+      shouldSnapshot: previousPost.has_versioning === true
     })
     reassembledDoc = buildDocFromBlocks(blocks)
   }
@@ -165,44 +153,28 @@ function cleanOptionalFieldClears(body: Record<string, unknown>) {
     assignments.push('password_hint = NONE')
   }
   if (body.visibility === 'public' || body.visibility === 'private') {
-    assignments.push("password_source = 'custom'", 'password_hash = NONE', 'password_owner = NONE')
+    assignments.push('password_hash = NONE')
   }
 
   return assignments.length ? `SET ${assignments.join(', ')}` : ''
 }
 
-async function resolveVisibilityUpdate(body: Record<string, unknown>, existing: Record<string, unknown>, currentUserId: string) {
+async function resolveVisibilityUpdate(body: Record<string, unknown>, existing: Record<string, unknown>) {
   const visibility = normalizeVisibility(body.visibility ?? existing.visibility)
   const updates: Record<string, unknown> = { visibility }
-  let ownerAction: { kind: 'set', userId: string } | { kind: 'clear' } | null = null
 
   if (visibility !== 'password') {
-    return { updates, ownerAction }
+    return updates
   }
 
   const currentHash = typeof existing.password_hash === 'string' ? existing.password_hash : null
   const password = typeof body.password === 'string' ? body.password : ''
-  const hasPasswordInput = Object.prototype.hasOwnProperty.call(body, 'password')
-  const passwordSource = hasPasswordInput
-    ? password.length > 0 ? 'custom' : 'user'
-    : normalizePasswordSource(body.password_source ?? existing.password_source)
-  updates.password_source = passwordSource
-
-  if (passwordSource === 'user') {
-    const userId = recordIdPart(currentUserId, 'users')
-    if (!userId) {
-      throw createError({ statusCode: 400, message: 'Could not resolve session user' })
-    }
-    ownerAction = { kind: 'set', userId }
+  if (password.length > 0) {
+    updates.password_hash = await hashPostPassword(password)
+  } else if (currentHash) {
+    updates.password_hash = currentHash
   } else {
-    if (password.length > 0) {
-      updates.password_hash = await hashPostPassword(password)
-    } else if (currentHash) {
-      updates.password_hash = currentHash
-    } else {
-      throw createError({ statusCode: 400, message: 'Password is required for password-protected posts' })
-    }
-    ownerAction = { kind: 'clear' }
+    throw createError({ statusCode: 400, message: 'Password is required for password-protected posts' })
   }
 
   if (Object.prototype.hasOwnProperty.call(body, 'password_hint')) {
@@ -212,16 +184,12 @@ async function resolveVisibilityUpdate(body: Record<string, unknown>, existing: 
     }
   }
 
-  return { updates, ownerAction }
+  return updates
 }
 
 function normalizeVisibility(value: unknown): PostVisibility {
   if (value === 'private' || value === 'password') return value
   return 'public'
-}
-
-function normalizePasswordSource(value: unknown): 'custom' | 'user' {
-  return value === 'user' ? 'user' : 'custom'
 }
 
 function parseDoc(value: unknown): JsonContent | null {

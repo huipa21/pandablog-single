@@ -1,9 +1,8 @@
 import { createError, type H3Event } from 'h3'
 import { isSetupCompleted } from './settings'
 import { hasAuthSessionCookie } from './session-cookie'
-import { findAuthAccountById, type SessionUser, type UserRole } from './users'
+import { findAuthAccountById, OWNER_ID, type SessionUser } from './users'
 
-export interface AdminUser { id: string, username: string, role: 'superadmin' | 'admin', display_name?: string | null }
 const identities = new WeakMap<H3Event, Promise<SessionUser | null>>()
 const accounts = new WeakMap<H3Event, {id: string, value: ReturnType<typeof findAuthAccountById>}>()
 export function getRequestAuthAccount(event: H3Event, id: string) {
@@ -25,33 +24,18 @@ async function resolveCurrentIdentity(event: H3Event): Promise<SessionUser | nul
   const session = await getUserSession(event)
   const id = (session.user as {id?: unknown} | undefined)?.id
   const epoch = (session.secure as {authEpoch?: unknown} | undefined)?.authEpoch
-  if (typeof id !== 'string' || !/^users:[a-z0-9._-]{3,64}$/.test(id) || typeof epoch !== 'string' || !/^[a-f0-9]{48}$/.test(epoch)) return null
+  if (id !== OWNER_ID || typeof epoch !== 'string' || !/^[a-f0-9]{48}$/.test(epoch)) return null
   const account = await getRequestAuthAccount(event, id)
   if (!account || account.active !== true || account.auth_epoch !== epoch) return null
   // Explicit DTO: epochs/credential/MFA fields never escape through user APIs.
-  return { id: account.id, username: account.username, role: account.role,
+  return { id: account.id, username: account.username,
     display_name: account.display_name, avatar: account.avatar, avatar_url: account.avatar_url }
 }
 
-export async function requireUser(event: H3Event, options: {roles?: readonly UserRole[]} = {}): Promise<SessionUser> {
+export async function requireOwner(event: H3Event): Promise<SessionUser> {
   if (!await isSetupCompleted()) throw createError({statusCode: 503, message: 'Admin setup is required'})
   const user = await getSessionUser(event)
   if (!user) throw createError({statusCode: 401, message: 'Authentication required'})
-  if (options.roles?.length && !options.roles.includes(user.role)) throw createError({statusCode: 403, message: 'Insufficient permissions'})
   return user
 }
-export async function requireSuperadmin(event: H3Event): Promise<SessionUser & {role: 'superadmin'}> {
-  return await requireUser(event, {roles: ['superadmin']}) as SessionUser & {role: 'superadmin'}
-}
-export async function requireAdminTier(event: H3Event): Promise<AdminUser> {
-  return await requireUser(event, {roles: ['superadmin', 'admin']}) as AdminUser
-}
-export async function requireContentManager(event: H3Event): Promise<SessionUser & {role: 'superadmin' | 'admin' | 'author'}> {
-  return await requireUser(event, {roles: ['superadmin', 'admin', 'author']}) as SessionUser & {role: 'superadmin' | 'admin' | 'author'}
-}
-export async function requireAuthenticatedUser(event: H3Event): Promise<SessionUser> { return requireUser(event) }
-export async function isAdminAuthenticated(event: H3Event): Promise<boolean> { return isAdminTier(await getSessionUser(event)) }
-export async function isAuthenticated(event: H3Event): Promise<boolean> { return Boolean(await getSessionUser(event)) }
-export function isAdminTier(user: SessionUser | null | undefined): user is SessionUser & {role: 'superadmin' | 'admin'} {
-  return Boolean(user && (user.role === 'superadmin' || user.role === 'admin'))
-}
+export async function isOwner(event: H3Event): Promise<boolean> { return Boolean(await getSessionUser(event)) }

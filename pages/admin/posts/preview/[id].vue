@@ -35,7 +35,6 @@ interface LocalDraftPayload {
   visibility?: string
   password?: string
   password_hint?: string
-  password_source?: string
   related_post_ids?: string[]
   content_json?: JsonContent
   savedAt?: string
@@ -66,7 +65,6 @@ function loadPreviewPost(): PostRecord | null {
     content_json: localDraft.content_json ?? emptyDoc(),
     status: 'draft',
     cover_image: localDraft.cover_image ?? '',
-    author_username: '',
     published_at: null,
     created_at: now,
     updated_at: now,
@@ -75,7 +73,6 @@ function loadPreviewPost(): PostRecord | null {
     cjk_char_count: 0,
     visibility: localDraft.visibility === 'private' || localDraft.visibility === 'password' ? localDraft.visibility : 'public',
     password_hint: localDraft.password_hint ?? null,
-    password_source: localDraft.password_source === 'custom' ? 'custom' : 'user',
     tag_ids: localDraft.tag_ids ?? [],
     category_ids: localDraft.category_ids ?? [],
     tags: buildTags(localDraft.tag_names),

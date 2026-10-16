@@ -1,8 +1,8 @@
-import { requireSuperadmin } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { listLogs, parseLogType, toCsv } from '../../../../utils/logging-admin'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const params = getRouterParams(event)
   if (!params.type) throw createError({ statusCode: 400, message: 'Missing log type' })
   const type = parseLogType(params.type)

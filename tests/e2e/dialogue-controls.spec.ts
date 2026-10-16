@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname
     let body: unknown
-    if (path === '/api/auth/session') body = { loggedIn: true, user: { id: 'ui-test', username: 'ui-test', role: 'superadmin' } }
+    if (path === '/api/auth/session') body = { loggedIn: true, user: { id: 'users:admin', username: 'admin' } }
     else if (path === '/api/auth/setup-status') body = { completed: true }
     else if (path === '/api/admin/posts/dialogue-ui-test') body = {
       id: 'dialogue-ui-test', title: 'Dialogue UI test', slug: 'dialogue-ui-test', status: 'draft',

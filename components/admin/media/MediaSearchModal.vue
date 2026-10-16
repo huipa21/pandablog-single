@@ -62,9 +62,6 @@
                   <MediaTagInput v-model="form.tags" />
                 </div>
               </UFormField>
-              <UFormField :label="t('admin.media.owner')">
-                <USelect v-model="form.owner" :items="ownerItems" :content="selectContent" :ui="selectUi" />
-              </UFormField>
               <UFormField :label="t('admin.media.type')">
                 <USelect v-model="form.type" :items="typeItems" :content="selectContent" :ui="selectUi" />
               </UFormField>
@@ -175,8 +172,6 @@ import MediaTagInput from '~/components/admin/media/MediaTagInput.vue'
 
 type SearchTab = 'simple' | 'advanced' | 'favorites' | 'recent'
 
-const OWNER_ANY = '__any_owner__'
-
 export interface MediaSearchPayload {
   search: string
   file_name: string
@@ -185,7 +180,6 @@ export interface MediaSearchPayload {
   tags: string[]
   type: string
   tag: string
-  owner: string
   uploaded_from: string
   uploaded_to: string
   orphan: boolean
@@ -211,7 +205,6 @@ interface SearchForm {
   comment: string
   tags: string[]
   type: string
-  owner: string
   uploaded_from: string
   uploaded_to: string
   orphan: boolean
@@ -292,24 +285,6 @@ function cleanString(value: unknown) {
   return String(value ?? '').trim()
 }
 
-const owners = ref<string[]>([])
-
-const ownerItems = computed(() => [
-  { label: t('admin.media.ownerAny'), value: OWNER_ANY },
-  ...owners.value.map((name) => ({ label: name, value: name }))
-])
-
-onMounted(loadOwners)
-
-async function loadOwners() {
-  try {
-    const data = await $fetch<{ owners: string[] }>('/api/media/owners')
-    owners.value = Array.isArray(data.owners) ? data.owners : []
-  } catch {
-    owners.value = []
-  }
-}
-
 function payloadToForm(payload: Partial<MediaSearchPayload>): SearchForm {
   const tags = Array.isArray(payload.tags) && payload.tags.length
     ? payload.tags
@@ -324,7 +299,6 @@ function payloadToForm(payload: Partial<MediaSearchPayload>): SearchForm {
     comment: payload.comment || '',
     tags,
     type: payload.type || 'all',
-    owner: payload.owner || OWNER_ANY,
     uploaded_from: payload.uploaded_from || '',
     uploaded_to: payload.uploaded_to || '',
     orphan: payload.orphan || false,
@@ -347,8 +321,6 @@ function formToPayload(): MediaSearchPayload {
 }
 
 function payloadFromForm(value: SearchForm): MediaSearchPayload {
-  const owner = value.owner === OWNER_ANY ? '' : cleanString(value.owner)
-
   return {
     search: cleanString(value.search),
     file_name: cleanString(value.file_name),
@@ -357,7 +329,6 @@ function payloadFromForm(value: SearchForm): MediaSearchPayload {
     tags: [...value.tags],
     type: value.type,
     tag: value.tags[0] || '',
-    owner,
     uploaded_from: value.uploaded_from,
     uploaded_to: value.uploaded_to,
     orphan: value.orphan,
@@ -423,18 +394,16 @@ function makeSavedSearch(name: string, payload: MediaSearchPayload): SavedSearch
 }
 
 function searchLabel(payload: MediaSearchPayload) {
-  return payload.search || payload.file_name || payload.extension || payload.comment || payload.tags[0] || payload.owner || payload.type || t('admin.media.mediaSearchDefault')
+  return payload.search || payload.file_name || payload.extension || payload.comment || payload.tags[0] || payload.type || t('admin.media.mediaSearchDefault')
 }
 
 function savedSummary(savedForm: SearchForm) {
-  const owner = savedForm.owner === OWNER_ANY ? '' : savedForm.owner
   const parts = [
     savedForm.search ? t('admin.media.summarySearch', { value: savedForm.search }) : '',
     savedForm.file_name ? t('admin.media.summaryName', { value: savedForm.file_name }) : '',
     savedForm.extension ? t('admin.media.summaryExtension', { value: savedForm.extension }) : '',
     savedForm.comment ? t('admin.media.summaryComments', { value: savedForm.comment }) : '',
     savedForm.tags.length ? t('admin.media.summaryTags', { value: savedForm.tags.join(', ') }) : '',
-    owner ? t('admin.media.summaryOwner', { value: owner }) : '',
     savedForm.uploaded_from ? t('admin.media.summaryFrom', { value: savedForm.uploaded_from }) : '',
     savedForm.uploaded_to ? t('admin.media.summaryTo', { value: savedForm.uploaded_to }) : '',
     savedForm.type && savedForm.type !== 'all' ? t('admin.media.summaryType', { value: savedForm.type }) : '',
@@ -458,7 +427,6 @@ function defaultPayload(): MediaSearchPayload {
     tags: [],
     type: 'all',
     tag: '',
-    owner: '',
     uploaded_from: '',
     uploaded_to: '',
     orphan: false,
@@ -498,13 +466,11 @@ function writeSaved(key: string, value: SavedSearch[]) {
 
 function normalizeForm(value: Partial<SearchForm>): SearchForm {
   const base = payloadToForm(defaultPayload())
-  const owner = typeof value.owner === 'string' && value.owner ? value.owner : OWNER_ANY
 
   return {
     ...base,
     ...value,
     tags: Array.isArray(value.tags) ? value.tags : [],
-    owner,
     // Older saved searches may hold numbers; the size inputs are string-bound.
     size_min: value.size_min === undefined || value.size_min === null ? base.size_min : String(value.size_min),
     size_max: value.size_max === undefined || value.size_max === null ? base.size_max : String(value.size_max),

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { H3Event } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({root: '', requireSuperadmin: vi.fn(), acquireJob: vi.fn(), releaseJob: vi.fn(), receiveBackupUpload: vi.fn(), importExternalBackup: vi.fn()}))
+const mocks = vi.hoisted(() => ({root: '', requireOwner: vi.fn(), acquireJob: vi.fn(), releaseJob: vi.fn(), receiveBackupUpload: vi.fn(), importExternalBackup: vi.fn()}))
 vi.mock('../../../server/utils/auth', () => mocks)
 vi.mock('../../../server/utils/backups/jobMutex', () => mocks)
 vi.mock('../../../server/utils/backups/upload', () => mocks)

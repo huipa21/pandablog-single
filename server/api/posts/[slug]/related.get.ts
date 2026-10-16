@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 import { queryDb, useDb } from '../../../utils/db'
-import { isAdminAuthenticated } from '../../../utils/auth'
+import { isOwner } from '../../../utils/auth'
 import { firstRow, queryRows, recordIdPart, stringifyRecordId } from '../../../utils/surrealResult'
 import { PUBLIC_LIST_CACHE_SECONDS, publicCacheKey, shouldBypassPublicCache } from '../../../utils/public-cache'
 import type { PostListItem, PostVisibility } from '~/types/content'
@@ -31,7 +31,7 @@ async function handleRelatedPosts(event: H3Event) {
     throw createError({ statusCode: 400, message: 'Slug is required' })
   }
 
-  const isAdmin = await isAdminAuthenticated(event)
+  const isAdmin = await isOwner(event)
   const visibilityFilter = isAdmin
     ? ''
     : 'AND (visibility IN ["public", "password"] OR visibility IS NONE)'

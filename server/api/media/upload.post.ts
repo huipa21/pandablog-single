@@ -1,4 +1,4 @@
-import { requireContentManager } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { useDb } from '../../utils/db'
 import { mediaCreateOrReuseFileRecord } from '../../utils/mediaLibrary'
 import { getMediaSettings } from '../../utils/settings'
@@ -6,7 +6,7 @@ import { MEDIA_UPLOAD_LIMITS, receiveMediaUpload } from '../../utils/media-uploa
 import type { UploadFileResult } from '~/types/content'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event), settings = await getMediaSettings(), db = await useDb()
+  const user = await requireOwner(event), settings = await getMediaSettings(), db = await useDb()
   const controller = new AbortController()
   const abort = () => {if (!event.node.res.writableEnded) controller.abort()}
   event.node.res.once('close', abort)
@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
     for (const file of upload.files) {
       if (controller.signal.aborted) throw createError({statusCode: 400, message: 'Media upload aborted'})
       try {
-        results.push(await mediaCreateOrReuseFileRecord(db, {...file, uploadedBy: user.username, createdBy: user.id, user, visibility: upload.visibility, signal: controller.signal}, settings))
+        results.push(await mediaCreateOrReuseFileRecord(db, {...file, user, visibility: upload.visibility, signal: controller.signal}, settings))
       } catch {
         // No storage paths, decoder diagnostics or private dedup metadata.
         results.push({original_name: file.originalName, status: 'rejected', reason: 'Upload failed'})

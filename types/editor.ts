@@ -1,4 +1,4 @@
-import type { JsonContent, PostPasswordSource, PostVisibility, RelatedPostSummary } from './content'
+import type { JsonContent, PostVisibility, RelatedPostSummary } from './content'
 
 export interface AdminPostEditorForm {
   title: string
@@ -12,7 +12,6 @@ export interface AdminPostEditorForm {
   visibility: PostVisibility
   password: string
   password_hint: string
-  password_source: PostPasswordSource
   related_post_ids: string[]
   related_posts: RelatedPostSummary[]
   content: JsonContent
@@ -23,6 +22,4 @@ export interface PostVersionListItem {
   version: string
   datetime: string
   diff: Array<Record<string, unknown>>
-  ownerId: string | null
-  ownerName: string | null
 }

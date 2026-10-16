@@ -1,4 +1,4 @@
-import type { PostPasswordSource, PostRecord, PostStatus, PostVisibility } from '~/types/content'
+import type { PostRecord, PostStatus, PostVisibility } from '~/types/content'
 import { slugify } from '../../utils/slug'
 import { emptyDoc } from './blocks'
 import { stringifyRecordId } from './surrealResult'
@@ -27,7 +27,6 @@ export function normalizePost(record: Record<string, unknown>): PostRecord {
     content_json: emptyDoc(),
     status: cleanStatus(record.status),
     cover_image: record.cover_image === undefined ? null : record.cover_image as string | null,
-    author_username: String(record.author_username ?? 'admin'),
     published_at: serializeDate(record.published_at),
     created_at: serializeDate(record.created_at) ?? new Date().toISOString(),
     updated_at: serializeDate(record.updated_at) ?? new Date().toISOString(),
@@ -36,9 +35,7 @@ export function normalizePost(record: Record<string, unknown>): PostRecord {
     cjk_char_count: Number(record.cjk_char_count ?? 0),
     has_versioning: record.has_versioning === true,
     visibility: cleanVisibility(record.visibility),
-    password_hint: record.password_hint === undefined ? null : record.password_hint as string | null,
-    password_source: cleanPasswordSource(record.password_source),
-    password_owner: record.password_owner ? stringifyRecordId(record.password_owner) : null
+    password_hint: record.password_hint === undefined ? null : record.password_hint as string | null
   }
 }
 
@@ -88,7 +85,7 @@ export function toDatetime(value: unknown): Date | null {
  * handled separately by `syncPostBlocks` and is intentionally *not* included
  * in the returned payload.
  */
-export function buildPostPayload(input: Record<string, unknown>, authorUsername: string) {
+export function buildPostPayload(input: Record<string, unknown>) {
   const title = String(input.title ?? '').trim()
   const status = cleanStatus(input.status)
   const now = new Date()
@@ -108,7 +105,6 @@ export function buildPostPayload(input: Record<string, unknown>, authorUsername:
     title,
     slug,
     status,
-    author_username: authorUsername,
     updated_at: now
   }
 
@@ -140,8 +136,4 @@ function cleanVisibility(value: unknown): PostVisibility {
   return ['public', 'private', 'password'].includes(String(value))
     ? value as PostVisibility
     : 'public'
-}
-
-function cleanPasswordSource(value: unknown): PostPasswordSource {
-  return value === 'user' ? 'user' : 'custom'
 }

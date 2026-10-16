@@ -8,13 +8,11 @@ import { createOwnedStorage } from '../../scripts/backend-hardening/fixture'
 import { MediaArchiveStore } from '../../server/utils/media-archives'
 
 const state = vi.hoisted(() => ({root: '', records: [] as Record<string, unknown>[], store: null as MediaArchiveStore | null, site: 'public', epoch: 'a'.repeat(48), queries: [] as string[]}))
-const actor = (event: H3Event) => {
-  const name = getCookie(event, 'actor')
-  return name ? {id: `users:${name}`, username: name, role: 'author' as const} : null
-}
+// Only the owner can hold a session; any other cookie value is an anonymous request.
+const actor = (event: H3Event) => getCookie(event, 'actor') === 'fixture' ? {id: 'users:admin', username: 'admin'} : null
 vi.mock('../../server/utils/auth', () => ({
-  getSessionUser: async (event: H3Event) => actor(event), isAuthenticated: async (event: H3Event) => Boolean(actor(event)),
-  requireContentManager: async (event: H3Event) => {const user = actor(event); if (!user) throw createError({statusCode: 401}); return user},
+  getSessionUser: async (event: H3Event) => actor(event), isOwner: async (event: H3Event) => Boolean(actor(event)),
+  requireOwner: async (event: H3Event) => {const user = actor(event); if (!user) throw createError({statusCode: 401}); return user},
   getRequestAuthAccount: async () => ({active: true, auth_epoch: state.epoch})
 }))
 vi.mock('../../server/utils/visibility', () => ({getSiteVisibility: async () => state.site}))
@@ -42,8 +40,8 @@ describe('real H3 media + shared-cache fixture (owned bytes only)', () => {
     state.store = new MediaArchiveStore(owned.path('downloads'), state.root)
     const hash = 'a'.repeat(64), second = 'b'.repeat(64)
     state.records = [
-      {id: `files:${hash}`, hash, original_name: 'original.txt', original_path: 'original.txt', mime_type: 'text/plain', visibility: 'private', created_by: 'users:fixture', uploaded_by: 'fixture', variants: {thumbnail: {path: 'variant.bin', mime_type: 'image/webp'}}},
-      {id: `files:${second}`, hash: second, original_name: 'second.txt', original_path: 'second.txt', visibility: 'public', created_by: 'users:fixture', uploaded_by: 'fixture'}
+      {id: `files:${hash}`, hash, original_name: 'original.txt', original_path: 'original.txt', mime_type: 'text/plain', visibility: 'private', variants: {thumbnail: {path: 'variant.bin', mime_type: 'image/webp'}}},
+      {id: `files:${second}`, hash: second, original_name: 'second.txt', original_path: 'second.txt', visibility: 'public'}
     ]
     for (const [name, value] of Object.entries({defineEventHandler, createError, getQuery, getRouterParam, getRequestURL, sendRedirect, sendStream, setResponseHeader, setResponseHeaders})) vi.stubGlobal(name, value)
     const {serveOriginalMedia, serveMediaVariant} = await import('../../server/utils/mediaServe')
@@ -103,17 +101,17 @@ describe('real H3 media + shared-cache fixture (owned bytes only)', () => {
         expect((await proxy(path, 'fixture')).status).toBe(404)
       }
       const make = (user: string) => fetch(`${base}/api/media/download`, {method: 'POST', headers: {cookie: `actor=${user}`, 'content-type': 'application/json'}, body: JSON.stringify({hashes: [hash, second]})})
-      expect((await make('other')).status).toBe(404)
+      expect((await make('other')).status).toBe(401)
       const created = await make('fixture'); expect(created.status).toBe(200)
       const {url} = await created.json()
-      expect((await proxy(url, 'other')).status).toBe(404)
+      expect((await proxy(url, 'other')).status).toBe(401)
       expect((await proxy(url, 'fixture')).status).toBe(200)
-      state.records[1]!.visibility = 'private'; state.records[1]!.created_by = 'users:other'; state.records[1]!.uploaded_by = 'other'
+      state.records[1]!.storage_state = 'deleting'
       expect((await proxy(url, 'fixture')).status).toBe(404) // ready ZIP rechecks mutable source policy
-      state.records[1]!.visibility = 'public'; state.epoch = 'b'.repeat(48)
+      delete state.records[1]!.storage_state; state.epoch = 'b'.repeat(48)
       expect((await proxy(url, 'fixture')).status).toBe(404)
       expect(cache.size).toBe(0)
-      expect(state.queries.every(sql => sql.includes('visibility') && sql.includes('created_by') && sql.includes('uploaded_by') && sql.includes('LIMIT 200'))).toBe(true)
+      expect(state.queries.every(sql => sql.includes('visibility') && sql.includes('storage_state') && sql.includes('LIMIT 200'))).toBe(true)
     } finally {state.site = 'public'; state.epoch = 'a'.repeat(48); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); await owned.cleanup()}
   })
 })

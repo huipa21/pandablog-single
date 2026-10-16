@@ -57,12 +57,12 @@
               @click="toggleThemeMode"
             />
             <PublicLanguageSwitcher :key="`hero-language-${publicLocale}`" />
-            <UDropdownMenu v-if="canCreateContent" :items="quickNewItems">
+            <UDropdownMenu v-if="isLoggedIn" :items="quickNewItems">
               <UButton type="button" variant="ghost" color="neutral" icon="i-lucide-plus" size="sm" :loading="creatingQuickPost" :aria-label="t('public.nav.new')" :title="t('public.nav.new')">
                 {{ t('public.nav.new') }}
               </UButton>
             </UDropdownMenu>
-            <UButton v-if="isLoggedIn && authRole !== 'viewer'" to="/admin/dashboard" variant="ghost" color="neutral" icon="i-lucide-layout-dashboard" size="sm">
+            <UButton v-if="isLoggedIn" to="/admin/dashboard" variant="ghost" color="neutral" icon="i-lucide-layout-dashboard" size="sm">
               {{ t('public.nav.admin') }}
             </UButton>
             <UDropdownMenu v-if="isLoggedIn" :items="accountMenuItems">
@@ -159,12 +159,12 @@
             @click="toggleThemeMode"
           />
           <PublicLanguageSwitcher :key="`compact-language-${publicLocale}`" />
-          <UDropdownMenu v-if="canCreateContent" :items="quickNewItems">
+          <UDropdownMenu v-if="isLoggedIn" :items="quickNewItems">
             <UButton type="button" variant="ghost" color="neutral" icon="i-lucide-plus" size="sm" :loading="creatingQuickPost" :aria-label="t('public.nav.new')" :title="t('public.nav.new')">
               {{ t('public.nav.new') }}
             </UButton>
           </UDropdownMenu>
-          <UButton v-if="isLoggedIn && authRole !== 'viewer'" to="/admin/dashboard" variant="ghost" color="neutral" icon="i-lucide-layout-dashboard" size="sm">
+          <UButton v-if="isLoggedIn" to="/admin/dashboard" variant="ghost" color="neutral" icon="i-lucide-layout-dashboard" size="sm">
             {{ t('public.nav.admin') }}
           </UButton>
           <UDropdownMenu v-if="isLoggedIn" :items="accountMenuItems">
@@ -333,7 +333,7 @@ const {
   storageKey: 'pb-public-color-mode',
   initialMode: () => publicBootstrap.value.themeMode,
   persist: async (mode) => {
-    if (!canManagePublicThemeMode.value) {
+    if (!isLoggedIn.value) {
       return
     }
 
@@ -351,15 +351,12 @@ const {
 } = usePostViewMode()
 const { data: authSession } = await usePublicAuthSession()
 const isLoggedIn = computed(() => Boolean(authSession.value?.loggedIn))
-const authRole = computed(() => authSession.value?.user?.role ?? null)
-const canCreateContent = computed(() => isLoggedIn.value && (authRole.value === 'superadmin' || authRole.value === 'admin' || authRole.value === 'author'))
-const canManagePublicThemeMode = computed(() => isLoggedIn.value && authRole.value === 'superadmin')
 const accountUser = computed(() => authSession.value?.user ?? null)
 const accountName = computed(() => accountUser.value?.display_name || accountUser.value?.username || t('admin.layout.account'))
 const accountAvatarUrl = computed(() => accountUser.value?.avatar_url || '')
 const accountInitials = computed(() => initialsFor(accountName.value))
 const accountMenuItems = computed(() => [[
-  { label: t('admin.layout.myProfile'), icon: 'i-lucide-user', onSelect: () => navigateTo('/profile') }
+  { label: t('admin.layout.myProfile'), icon: 'i-lucide-user', onSelect: () => navigateTo('/admin/settings/account') }
 ], [
   { label: t('admin.layout.signOut'), icon: 'i-lucide-log-out', color: 'error' as const, onSelect: logout }
 ]])

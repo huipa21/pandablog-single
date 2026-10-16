@@ -7,7 +7,7 @@ managing media, and configuring your site — all backed by SurrealDB.
 - **Public site**: SSR blog with posts, categories, tags, full-text search (including CJK),
   a relationship graph, and a publish-activity heatmap.
 - **Admin workspace**: a Tiptap-based WYSIWYG editor with many content blocks, a hash-based
-  media library, analytics, logging, backups, post versioning, themes, and multi-user roles.
+  media library, analytics, logging, backups, post versioning, and themes.
 - **Modular**: optional features can be compiled in or out per deployment.
 
 ---
@@ -59,8 +59,7 @@ managing media, and configuring your site — all backed by SurrealDB.
 - **Logging** — configurable activity and grouped error logs with export and DB retention; HTTP access logs belong to the reverse proxy.
 - **Backups** — full and incremental snapshots of the database and media, with import/export.
 - **Themes** — deployment-managed themes with preview, activation, and light/dark design tokens.
-- **Multi-user roles** — superadmin, admin, author, and viewer roles.
-- **Two-factor authentication** — per-account TOTP, with optional admin enforcement.
+- **Two-factor authentication** — TOTP for the admin account, with optional enforcement.
 - **Internationalized UI** — English and Simplified Chinese out of the box.
 
 ---
@@ -210,7 +209,7 @@ map is empty.
 
 The admin username is always `admin`. The password is **not** stored in an environment variable —
 on a fresh database, open `/admin` and complete the setup wizard. Your password is hashed with
-argon2id and stored in SurrealDB. You can change it later from **Admin → Settings → Profile**.
+argon2id and stored in SurrealDB. You can change it later from **Admin → Settings → Account**.
 
 ---
 
@@ -264,7 +263,7 @@ docker exec pandablog-app panda help recover     # same as: panda recover --help
 | `panda health [--url <url>] [--timeout <s>] [--json]` | Probes the server over loopback (default `http://127.0.0.1:$PORT/api/health`, 5 s). Exit `0` for any non-5xx response, `1` for 5xx/refused/timeout. Use `--url …/api/ready` for readiness or `…/api/health?db=1` for a DB connectivity probe. |
 | `panda recover` | Read-only restore inspection of `storage/backups`. No `.env`, DB, SQL or token output. Reports `clear` (including retired writer records, finite job holds and verified terminal/pre-destructive journals) or `manual-recovery-required` (actual/ambiguous destructive restore). |
 | Old startup archival/assertion flags | Retired: exit 1 before I/O, without filesystem changes. Ordinary restart needs no writer archival. |
-| `panda password-reset <username>` | Hidden password and confirmation prompts, then saves an Argon2id hash for an existing user and invalidates old sessions/trusted devices. Requires an interactive terminal and scoped DB credentials; preserves roles, account status and MFA. |
+| `panda password-reset <username>` | Hidden password and confirmation prompts, then saves an Argon2id hash for an existing user and invalidates old sessions/trusted devices. Requires an interactive terminal and scoped DB credentials; preserves account status and MFA. |
 | `panda help [command]` (also `--help`, `-h`, `panda <command> --help`) | Overview, or detailed help for one command. |
 
 Exit codes: `0` success/healthy/inspection completed; `1` failure, unhealthy, refused recovery action or usage error.
@@ -321,8 +320,8 @@ guarantees, OCI labels, admin API and the full CLI reference.
 
 ## Optional features
 
-Every feature is included in every build. Optional behavior is controlled at runtime by a
-superadmin, without rebuilding:
+Every feature is included in every build. Optional behavior is controlled at runtime by the
+admin, without rebuilding:
 
 | Feature | Where to control it | Default |
 | --- | --- | --- |
@@ -389,7 +388,7 @@ storage/variants/large/YYYY/MM/<hash>.webp
 
 ## Backups
 
-**Admin → Tools → Backups** (superadmin only) provides manual snapshot management. Each snapshot
+**Admin → Tools → Backups** provides manual snapshot management. Each snapshot
 is stored under `storage/backups/<id>/`:
 
 ```text
@@ -575,14 +574,14 @@ Compose environment changes require container recreation, not merely restart.
 
 ### Two-factor authentication
 
-Each account can enable TOTP from **Admin → Settings → Security**. Superadmins can require MFA for
-all administrators, forcing enrollment at next sign-in.
+The admin account can enable TOTP from **Admin → Settings → Security**. Turning on **Require MFA**
+forces enrollment at the next sign-in.
 
 TOTP secrets are encrypted at rest (AES-256-GCM). The key is derived from `NUXT_MFA_SECRET` when set,
 otherwise from `NUXT_SESSION_PASSWORD`.
 
 > Rotating the MFA key (or the session password when no dedicated MFA key is set) **invalidates
-> all stored TOTP secrets** — affected users must re-enroll. Backup codes are hashed (not
+> all stored TOTP secrets** — the admin must re-enroll. Backup codes are hashed (not
 > encrypted) and are unaffected. Database backups include the encrypted secrets, so a restore only
 > works with the matching key.
 
@@ -750,8 +749,8 @@ Playwright loads process overrides first, then `.env.e2e.local`, `.env.e2e`, `.e
 `.env` (first defined value wins). The root `.env.example` includes both optional keys.
 Use a disposable test deployment; authenticated tests can create/delete application data.
 Authenticated development E2E specs use those two E2E names only, without alternate login-name
-fallbacks. Anonymous public and explicitly mocked UI tests intentionally need no account;
-user-management cases generate credentials for their own test-created users. Unit/DB integration
+fallbacks. Anonymous public and explicitly mocked UI tests intentionally need no account.
+Unit/DB integration
 suites use independent owned fixture credentials, never the development E2E account.
 
 ---
@@ -813,9 +812,8 @@ Content is normalized in SurrealDB:
 - `files` + `folder` — the hash-addressed media library.
 - `tag`, `category` — taxonomy, linked to posts via the `tagged` and `categorized_as` relations.
 - `links` — explicit post-to-post relationships used by the graph view.
-- `users` — accounts and roles (superadmin, admin, author, viewer).
+- `users` — the single admin account (`users:admin`): password hash, profile and MFA state.
 - `app_settings` — key/value store for site settings (visibility, logging, media, etc.).
-- `edit_lock` — ensures a single active editor per post.
 
 Full-text indexes cover post titles and summaries, block text, and media names/comments, using a
 multilingual analyzer tuned for English and CJK content.

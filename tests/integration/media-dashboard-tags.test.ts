@@ -6,8 +6,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { startFixture } from '../../scripts/backend-hardening/fixture'
 
 const state = vi.hoisted(() => ({db: null as Surreal | null}))
-const owner = {id: 'users:owner', username: 'owner', role: 'author' as const}
-vi.mock('../../server/utils/auth', () => ({requireContentManager: async () => owner}))
+const owner = {id: 'users:admin', username: 'admin'}
+vi.mock('../../server/utils/auth', () => ({requireOwner: async () => owner}))
 vi.mock('../../server/utils/settings', () => ({getMediaSettings: async () => ({oversized_image_threshold_mb: 2, max_file_size_mb: 20})}))
 vi.mock('../../server/utils/db', async original => ({
   ...await original<typeof import('../../server/utils/db')>(),
@@ -16,7 +16,7 @@ vi.mock('../../server/utils/db', async original => ({
 
 // Real endpoint handlers and SQL; credentials/storage belong only to the owned fixture.
 describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('media tags and dashboard routes on actual SDK/3.2.x', () => {
-  it('handles untagged libraries and shows older assets by default without leaking private files', async () => {
+  it('handles untagged libraries, shows older assets by default and includes the owner\'s private files', async () => {
     const fixture = await startFixture({enabled: process.env.PB_BACKEND_FIXTURE, binary: process.env.PB_BACKEND_SURREAL_BIN ?? ''})
     const db = new Surreal()
     let server: ReturnType<typeof createServer> | undefined
@@ -41,30 +41,29 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('media tags and dashboar
         return response.json()
       }
       expect(await get('/tags')).toEqual({tags: [], truncated: false})
-      const createFile = async (id: string, tags: string[], visibility = 'public', uploadedBy = 'other', storageState = 'ready') => {
+      const createFile = async (id: string, tags: string[], visibility = 'public', storageState = 'ready') => {
         await db.query(`CREATE type::record('files', $id) CONTENT {
           hash: $id, original_name: 'fixture.jpg', stored_name: 'fixture.jpg', original_path: 'fixture.jpg',
           mime_type: 'image/jpeg', extension: 'jpg', size: 100, is_image: true,
-          tags: $tags, visibility: $visibility, created_by: type::record('users', $uploadedBy),
-          uploaded_by: $uploadedBy, storage_state: $storageState, uploaded_at: $date
-        };`, {id, tags, visibility, uploadedBy, storageState, date: new Date('2024-01-01T00:00:00Z')})
+          tags: $tags, visibility: $visibility, storage_state: $storageState, uploaded_at: $date
+        };`, {id, tags, visibility, storageState, date: new Date('2024-01-01T00:00:00Z')})
       }
       await createFile('untagged', [])
       expect(await get('/tags')).toEqual({tags: [], truncated: false})
       await createFile('tagged', ['Nature', 'travel'])
-      await createFile('owned', ['nature'], 'private', 'owner')
+      await createFile('owned', ['nature'], 'private')
       await createFile('secret', ['secret'], 'private')
-      await createFile('publishing', ['unfinished'], 'public', 'other', 'publishing')
+      await createFile('publishing', ['unfinished'], 'public', 'publishing')
       const tags = await get('/tags')
       expect(tags.truncated).toBe(false)
-      expect(tags.tags.map((tag: {id: string, count: number}) => ({id: tag.id, count: tag.count}))).toEqual([{id: 'nature', count: 2}, {id: 'travel', count: 1}])
+      expect(tags.tags.map((tag: {id: string, count: number}) => ({id: tag.id, count: tag.count}))).toEqual([{id: 'nature', count: 2}, {id: 'secret', count: 1}, {id: 'travel', count: 1}])
       expect((await get('/tags?q=NATURE')).tags).toHaveLength(1)
-      expect((await get('/tags?q=secret')).tags).toEqual([])
+      expect((await get('/tags?q=unfinished')).tags).toEqual([])
       const all = await get('/dashboard')
-      expect(all.summary).toEqual({total_items: 3, total_storage: 300, average_size: 100})
-      expect(all.time_insights).toMatchObject({range: 'all', start: null, uploaded_items: 3})
-      expect(all.by_type.find((row: {type: string}) => row.type === 'image')).toMatchObject({count: 3, storage: 300})
-      expect(all.largest_files).toHaveLength(3)
+      expect(all.summary).toEqual({total_items: 4, total_storage: 400, average_size: 100})
+      expect(all.time_insights).toMatchObject({range: 'all', start: null, uploaded_items: 4})
+      expect(all.by_type.find((row: {type: string}) => row.type === 'image')).toMatchObject({count: 4, storage: 400})
+      expect(all.largest_files).toHaveLength(4)
       const recent = await get('/dashboard?range=custom&from=2026-10-03&to=2026-10-09')
       expect(recent.summary).toEqual({total_items: 0, total_storage: 0, average_size: 0})
       expect(recent.largest_files).toEqual([])

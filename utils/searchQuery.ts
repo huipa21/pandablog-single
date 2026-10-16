@@ -33,7 +33,6 @@ export interface AdvancedSearchCriteria {
   groupOp: SearchKeywordOperator
   categories: string[]
   tags: string[]
-  authors: string[]
   date: SearchDatePreset | ''
   start: string
   end: string
@@ -46,8 +45,7 @@ export const SEARCH_LIMITS = {
   maxTermsPerGroup: 5,
   maxTermLength: 64,
   maxCategories: 10,
-  maxTags: 20,
-  maxAuthors: 10
+  maxTags: 20
 } as const
 
 export const SEARCH_DATE_PRESETS: readonly SearchDatePreset[] = ['7d', '30d', '12m', 'year', 'custom']
@@ -63,7 +61,6 @@ export function createEmptySearchCriteria(): AdvancedSearchCriteria {
     groupOp: 'and',
     categories: [],
     tags: [],
-    authors: [],
     date: '',
     start: '',
     end: '',
@@ -161,7 +158,6 @@ export function parseSearchCriteria(query: Record<string, unknown>): AdvancedSea
     groupOp: normalizeSearchOperator(firstString(query.kwop), 'and'),
     categories: splitList(query.cat, SEARCH_LIMITS.maxCategories),
     tags: splitList(query.tag, SEARCH_LIMITS.maxTags),
-    authors: splitList(query.author, SEARCH_LIMITS.maxAuthors),
     date: normalizeSearchDatePreset(firstString(query.date)),
     start: normalizeDateOnly(query.start),
     end: normalizeDateOnly(query.end),
@@ -181,7 +177,6 @@ export function buildSearchCriteriaQuery(criteria: AdvancedSearchCriteria): Reco
   }
   if (criteria.categories.length) query.cat = criteria.categories.join(',')
   if (criteria.tags.length) query.tag = criteria.tags.join(',')
-  if (criteria.authors.length) query.author = criteria.authors.join(',')
   if (criteria.date) {
     query.date = criteria.date
     if (criteria.date === 'custom') {
@@ -200,7 +195,6 @@ export function hasSearchKeywords(criteria: AdvancedSearchCriteria): boolean {
 export function hasSearchFilters(criteria: AdvancedSearchCriteria): boolean {
   return criteria.categories.length > 0
     || criteria.tags.length > 0
-    || criteria.authors.length > 0
     || hasSearchDateRange(criteria)
 }
 

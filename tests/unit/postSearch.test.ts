@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import type { SearchPostResult } from '../../types/content'
 
 vi.mock('../../server/utils/db', () => ({ queryDb: vi.fn() }))
-vi.mock('../../server/utils/searchAuthors', () => ({ resolveSearchAuthors: vi.fn() }))
 
 const { expandCategoryIds, sortSearchResults, toSafeSnippet, HIGHLIGHT_OPEN, HIGHLIGHT_CLOSE } = await import('../../server/utils/postSearch')
 

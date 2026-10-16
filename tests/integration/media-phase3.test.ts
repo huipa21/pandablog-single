@@ -32,8 +32,7 @@ vi.mock('../../server/utils/fileStorage', async importOriginal => {
   }
 })
 let ownedRoot = ''
-const owner = {id: 'users:owner', username: 'owner', role: 'author' as const}
-const other = {...owner, id: 'users:other', username: 'other'}
+const owner = {id: 'users:admin', username: 'admin'}
 const hash = (number: number) => number.toString(16).padStart(64, '0')
 describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('Phase 3 actual SDK/3.2.x SQL and owned file publication', () => {
   it('filters/paginates/counts/ranks/regexes before projection; reservations arbitrate deletion', async () => {
@@ -53,19 +52,19 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('Phase 3 actual SDK/3.2.
       ]
       for (const [index, row] of rows.entries()) await db.query(`CREATE type::record('files', $hash) CONTENT {
         hash: $hash, original_name: $name, stored_name: $name, original_path: $name, mime_type: 'image/jpeg', extension: 'jpg', size: $size,
-        visibility: $visibility, uploaded_by: $uploaded_by, created_by: type::record('users', $uploaded_by), tags: $tags, comment: $comment,
+        visibility: $visibility, tags: $tags, comment: $comment,
         reference_safe: true, perceptual_hash: '0000000000000000000000000000000000000000000000000000000000000000',
         uploaded_at: $date
-      };`, {...row, uploaded_by: index === 3 ? 'owner' : 'other', date: new Date(`2024-01-0${index + 1}T00:00:00Z`)})
+      };`, {...row, date: new Date(`2024-01-0${index + 1}T00:00:00Z`)})
       const dashboard = await mediaDashboard(db, owner, {range: 'all', start: null, end: new Date()}, 150)
-      expect(dashboard.summary).toEqual({total_items: 3, total_storage: 700, average_size: 233})
-      expect(dashboard.orphans.count).toBe(3)
-      expect(dashboard.largest_files.map(file => file.hash)).toEqual([hash(4), hash(2), hash(1)])
-      expect(dashboard.by_type.find(type => type.type === 'other')?.count).toBe(3)
+      expect(dashboard.summary).toEqual({total_items: 4, total_storage: 1000, average_size: 250})
+      expect(dashboard.orphans.count).toBe(4)
+      expect(dashboard.largest_files.map(file => file.hash)).toEqual([hash(4), hash(3), hash(2), hash(1)])
+      expect(dashboard.by_type.find(type => type.type === 'other')?.count).toBe(4)
       const page = await mediaSearchFileRecords(db, {visibleToUser: owner, page: 2, limit: 1, sort: 'name_asc'})
-      expect(page.total).toBe(3); expect(page.files[0]!.original_name).toBe('beech-tree.jpg')
+      expect(page.total).toBe(4); expect(page.files[0]!.original_name).toBe('beech-tree.jpg')
       expect((await mediaSearchFileRecords(db, {visibleToUser: owner, tags: ['NATURE', 'TRAVEL'], comment: 'final'})).files.map(file => file.hash)).toEqual([hash(1)])
-      expect((await mediaSearchFileRecords(db, {visibleToUser: owner, folder: 'default', size_min: 150, size_max: 450})).total).toBe(2)
+      expect((await mediaSearchFileRecords(db, {visibleToUser: owner, folder: 'default', size_min: 150, size_max: 450})).total).toBe(3)
       expect((await mediaSearchFileRecords(db, {visibleToUser: owner, filename_regex: '^be[ae]ch'})).total).toBe(2)
       expect((await mediaSearchFileRecords(db, {visibleToUser: owner, search: 'baech'})).total).toBe(2)
       expect((await mediaSearchFileRecords(db, {visibleToUser: owner, search: 'beach'})).files.map(file => file.hash)).toEqual([hash(1)])
@@ -77,30 +76,28 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('Phase 3 actual SDK/3.2.
       expect((await mediaSearchFileRecords(db, {visibleToUser: owner, filename_regex: '^(a+)+$'})).total).toBe(0)
       expect(performance.now() - regexStarted).toBeLessThan(1000)
       await db.query("DELETE type::record('files', $hash);", {hash: hash(6)})
-      expect((await mediaSearchFileRecords(db, {visibleToUser: owner, owner: 'other', uploaded_from: '2024-01-02'})).files.map(file => file.hash)).toEqual([hash(2)])
+      expect((await mediaSearchFileRecords(db, {visibleToUser: owner, uploaded_from: '2024-01-02'})).files.map(file => file.hash)).toEqual([hash(4), hash(3), hash(2)])
       const scope = mediaScope(owner)
       const tags = await db.query(`SELECT key, array::first(array::group(name)) AS name, count() AS count, time::max(uploaded_at) AS latest FROM (SELECT tags AS name, string::lowercase(tags) AS key, uploaded_at FROM (SELECT tags, uploaded_at FROM files WITH NOINDEX WHERE ${scope.where} AND array::len(tags) > 0 SPLIT tags TIMEOUT 5s)) WHERE string::contains(key, $search) GROUP BY key ORDER BY count DESC, key ASC LIMIT 201 TIMEOUT 5s;`, {...scope.params, search: ''})
-      expect(queryRows<{name: string}>(tags).some(row => row.name === 'secret')).toBe(false)
+      expect(queryRows<{name: string}>(tags).some(row => row.name === 'secret')).toBe(true)
       expect(queryRows<{key: string, count: number}>(tags).find(row => row.key === 'nature')?.count).toBe(3)
-      const owners = await db.query(`SELECT uploaded_by FROM files WITH NOINDEX WHERE ${scope.where} AND uploaded_by != NONE GROUP BY uploaded_by ORDER BY uploaded_by LIMIT 201 TIMEOUT 5s;`, scope.params)
-      expect(queryRows<{uploaded_by: string}>(owners).map(row => row.uploaded_by)).toEqual(['other', 'owner'])
       const manage = mediaScope(owner, true)
-      expect(queryRows(await db.query(`UPDATE type::record('files', $hash) SET comment = 'forbidden' WHERE ${manage.where} RETURN AFTER;`, {...manage.params, hash: hash(3)}))).toHaveLength(0)
+      expect(queryRows(await db.query(`UPDATE type::record('files', $hash) SET comment = 'owner metadata' WHERE ${manage.where} RETURN AFTER;`, {...manage.params, hash: hash(3)}))).toHaveLength(1)
       const updated = await db.query(`UPDATE files SET comment = 'owned metadata' WHERE hash IN $hashes AND ${manage.where} RETURN id;`, {...manage.params, hashes: [hash(1), hash(3), hash(4)]})
-      expect(queryRows(updated)).toHaveLength(1)
+      expect(queryRows(updated)).toHaveLength(3)
       const plan = await db.query(`SELECT id, uploaded_at FROM files WITH NOINDEX WHERE ${scope.where} ORDER BY uploaded_at DESC, id ASC LIMIT 24 EXPLAIN FULL;`, scope.params)
       process.stdout.write(JSON.stringify({evidence: 'REV-3-local-query-plan', plan}) + '\n')
-      // A private-only similar candidate cannot leak across ownership.
+      // Only private candidates match a private upload.
       await db.query("UPDATE files SET perceptual_hash = NONE WHERE visibility = 'public';")
       const similar = await mediaFindSimilarImage(db, '0'.repeat(64), 0, owner, 'private')
-      expect(similar?.hash).toBe(hash(4))
+      expect([hash(3), hash(4)]).toContain(similar?.hash)
       await mediaReserveReferences(db, 'post:fixture', [`/media/${hash(1)}`], owner)
-      expect(await mediaClaimDeletion(db, hash(1), {...owner, role: 'superadmin'})).toBeNull()
+      expect(await mediaClaimDeletion(db, hash(1), owner)).toBeNull()
       await mediaRemoveAllReferencesForSource(db, 'post:fixture')
       const released = await mediaReadFileByHash(db, hash(1))
       expect(released?.reference_count).toBe(0)
       await mediaReserveReferences(db, 'post:fixture', [`/media/${hash(1)}`], owner)
-      const deletion = await mediaClaimDeletion(db, hash(2), {...owner, role: 'superadmin'})
+      const deletion = await mediaClaimDeletion(db, hash(2), owner)
       expect(deletion?.claim).toBeTruthy()
       await expect(mediaReserveReferences(db, 'post:loser', [`/media/${hash(2)}`], owner)).rejects.toThrow(/unavailable/)
       expect(await mediaReadFileByHash(db, hash(2))).toBeNull()
@@ -117,7 +114,7 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('Phase 3 actual SDK/3.2.
       const data = Buffer.from('ordinary uploaded text'), path = join(stage, 'file')
       await writeFile(path, data)
       const {createHash} = await import('node:crypto'), publicationHash = createHash('sha256').update(data).digest('hex')
-      const input = {path, hash: publicationHash, originalName: 'file.txt', mimeType: 'text/plain', size: data.length, user: owner, createdBy: owner.id, uploadedBy: owner.username}
+      const input = {path, hash: publicationHash, originalName: 'file.txt', mimeType: 'text/plain', size: data.length, user: owner}
       const publications = await Promise.all([mediaCreateOrReuseFileRecord(db, input, settings), mediaCreateOrReuseFileRecord(db, input, settings)])
       expect(publications.map(result => result.status)).toEqual(['created', 'duplicate'])
       expect(publications[0]!.record?.storage_state).toBe('ready')
@@ -125,7 +122,7 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('Phase 3 actual SDK/3.2.
       await db.query(`CREATE type::record('files', $hash) CONTENT {hash: $hash, original_name: 'legacy.txt', stored_name: 'legacy.txt', original_path: 'legacy.txt', mime_type: 'text/plain', extension: 'txt', size: 10};`, {hash: hash(5)})
       await mediaInitializeLegacyState(db); await mediaInitializeLegacyState(db)
       expect((await mediaReadFileByHash(db, hash(5)))?.storage_state).toBe('ready')
-      expect(await mediaClaimDeletion(db, hash(5), {...owner, role: 'superadmin'})).toBeNull()
+      expect(await mediaClaimDeletion(db, hash(5), owner)).toBeNull()
       await mediaRecoverInterruptedObjects(db)
       expect(await mediaReadFileByHash(db, publicationHash)).toBeTruthy()
       // Bounded batches seed a catalog with deliberately heavy metadata that

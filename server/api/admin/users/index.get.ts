@@ -1,8 +1,8 @@
-import { requireAdminTier } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { isUserRole, searchUsers, USER_LIST_SORTS, type UserActiveFilter, type UserListSort } from '../../../utils/users'
 
 export default defineEventHandler(async (event) => {
-  const actor = await requireAdminTier(event)
+  const actor = await requireOwner(event)
   const query = getQuery(event)
   const limit = normalizeLimit(query.limit)
   const start = normalizeStart(query.start)

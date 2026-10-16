@@ -1,13 +1,11 @@
 import { queryDb, useDb } from '../../utils/db'
 import { queryRows, stringifyRecordId } from '../../utils/surrealResult'
-import { loadSearchAuthorRecords } from '../../utils/searchAuthors'
-import type { SearchOptionAuthor, SearchOptionCategory, SearchOptionTag, SearchOptionsResponse } from '~/types/content'
+import type { SearchOptionCategory, SearchOptionTag, SearchOptionsResponse } from '~/types/content'
 
 /**
- * Autocomplete data for the public advanced search: tags, categories (with
- * sub-category roll-up) and authors (display name only) that have at least one
- * published, non-private post. Filtering happens client-side (plain substring
- * matching, not fuzzy).
+ * Autocomplete data for the public advanced search: tags and categories (with
+ * sub-category roll-up) that have at least one published, non-private post.
+ * Filtering happens client-side (plain substring matching, not fuzzy).
  */
 export default defineEventHandler(async (event): Promise<SearchOptionsResponse> => {
   setResponseHeader(event, 'Cache-Control', 'private, max-age=60')
@@ -19,9 +17,7 @@ export default defineEventHandler(async (event): Promise<SearchOptionsResponse> 
     `SELECT id, name, slug FROM tag;
      SELECT out, count() AS total FROM tagged WHERE ${visiblePost} GROUP BY out;
      SELECT id, name, slug, parent FROM category;
-     SELECT out, count() AS total FROM categorized_as WHERE ${visiblePost} GROUP BY out;
-     SELECT author, author_username FROM post
-       WHERE status = 'published' AND (visibility IS NONE OR visibility IN ['public', 'password']);`,
+     SELECT out, count() AS total FROM categorized_as WHERE ${visiblePost} GROUP BY out;`,
     undefined,
     { label: 'search options' }
   )
@@ -41,15 +37,7 @@ export default defineEventHandler(async (event): Promise<SearchOptionsResponse> 
     countByOut(queryRows<Record<string, unknown>>(response, 3))
   )
 
-  const authorRows = queryRows<{ author?: unknown, author_username?: unknown }>(response, 4)
-  const authorIds = new Set(authorRows.map((row) => row.author ? stringifyRecordId(row.author) : '').filter(Boolean))
-  const legacyUsernames = new Set(authorRows.filter((row) => !row.author).map((row) => String(row.author_username ?? '')).filter(Boolean))
-  const authors: SearchOptionAuthor[] = (await loadSearchAuthorRecords(db))
-    .filter((author) => authorIds.has(stringifyRecordId(author.recordId)) || legacyUsernames.has(author.username))
-    .map((author) => ({ id: author.token, name: author.name }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  return { tags, categories, authors }
+  return { tags, categories }
 })
 
 function countByOut(rows: Record<string, unknown>[]) {

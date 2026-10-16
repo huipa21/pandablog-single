@@ -1,9 +1,9 @@
 import { useDb } from '../../../utils/db'
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { updateMediaSettings, type MediaSettings } from '../../../utils/settings'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   const body = await readBody<Partial<MediaSettings>>(event)
 

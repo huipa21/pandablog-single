@@ -5,7 +5,7 @@ import { lookupAnalyticsGeo } from '../../utils/analytics/geo'
 import { hashAnalyticsVisitor } from '../../utils/analytics/hash'
 import { normalizeAnalyticsPath, normalizeAnalyticsReferrer } from '../../utils/analytics/path'
 import { recordAnalyticsPageview } from '../../utils/analytics/session'
-import { getSessionUser, isAdminTier } from '../../utils/auth'
+import { isOwner } from '../../utils/auth'
 import { queryDb, useDb } from '../../utils/db'
 import { consumeRateLimit } from '../../utils/rate-limit'
 import { getAnalyticsSettings, getRuntimeFlags } from '../../utils/settings'
@@ -54,10 +54,8 @@ export default defineEventHandler(async (event) => {
       return emptyTrackingResponse(event)
     }
 
-    // Don't record admin/staff page views as public analytics; their internal
-    // navigation would otherwise skew traffic, geo and session metrics.
-    const sessionUser = await getSessionUser(event)
-    if (isAdminTier(sessionUser)) {
+    // Don't record the owner's own page views as public analytics.
+    if (await isOwner(event)) {
       return emptyTrackingResponse(event)
     }
 
@@ -88,16 +86,15 @@ function emptyTrackingResponse(event: Parameters<typeof setResponseStatus>[0]) {
   return null
 }
 
-async function incrementTrackedPostView(db: Awaited<ReturnType<typeof useDb>>, event: Parameters<typeof getSessionUser>[0], slug: string) {
+async function incrementTrackedPostView(db: Awaited<ReturnType<typeof useDb>>, event: Parameters<typeof isOwner>[0], slug: string) {
   try {
-    const user = await getSessionUser(event)
-    if (isAdminTier(user)) {
+    if (await isOwner(event)) {
       return
     }
 
     const response = await queryDb(
       db,
-      `SELECT id, visibility, author, author_username
+      `SELECT id, visibility
        FROM post
        WHERE slug = $slug AND status = 'published'
        LIMIT 1;`,
@@ -111,9 +108,7 @@ async function incrementTrackedPostView(db: Awaited<ReturnType<typeof useDb>>, e
 
     const access = await evaluatePostAccess(event, {
       id: stringifyRecordId(post.id),
-      visibility: toPostVisibility(post.visibility),
-      author: post.author,
-      author_username: typeof post.author_username === 'string' ? post.author_username : null
+      visibility: toPostVisibility(post.visibility)
     })
 
     if (access.state !== 'allow') {

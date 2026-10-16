@@ -28,11 +28,8 @@
               {{ index === 0 ? t('admin.editor.versionsPanel.current') : t('admin.editor.versionsPanel.version', { n: versions.length - index }) }}
             </p>
             <p class="text-xs text-[var(--pb-text-subtle)]">{{ formatVersionDate(version) }}</p>
-            <p class="mt-0.5 flex items-center gap-1 text-xs text-[var(--pb-text-muted)]">
-              <UIcon name="i-lucide-user" class="size-3 shrink-0" />
-              <span class="truncate">{{ version.ownerName || t('admin.editor.versionsPanel.unknownOwner') }}</span>
-              <span class="text-[var(--pb-text-subtle)]">·</span>
-              <span>{{ t('admin.editor.versionsPanel.changedBlocks', version.diff.length) }}</span>
+            <p class="mt-0.5 text-xs text-[var(--pb-text-muted)]">
+              {{ t('admin.editor.versionsPanel.changedBlocks', version.diff.length) }}
             </p>
           </div>
           <UDropdownMenu :items="rowMenuItems(version)">
@@ -57,9 +54,8 @@
 <script setup lang="ts">
 import type { PostVersionListItem } from '~/types/editor'
 
-const props = defineProps<{
+defineProps<{
   versions: PostVersionListItem[]
-  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -79,8 +75,8 @@ function formatVersionDate(version: PostVersionListItem) {
 function rowMenuItems(version: PostVersionListItem) {
   return [[
     { label: t('admin.editor.versionsPanel.showDiff'), icon: 'i-lucide-git-compare', onSelect: () => emit('diff', version) },
-    { label: t('admin.editor.versionsPanel.restore'), icon: 'i-lucide-rotate-ccw', disabled: props.readOnly, onSelect: () => emit('restore', version) },
-    { label: t('admin.editor.versionsPanel.delete'), icon: 'i-lucide-trash-2', color: 'error' as const, disabled: props.readOnly, onSelect: () => emit('delete', version) }
+    { label: t('admin.editor.versionsPanel.restore'), icon: 'i-lucide-rotate-ccw', onSelect: () => emit('restore', version) },
+    { label: t('admin.editor.versionsPanel.delete'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => emit('delete', version) }
   ]]
 }
 </script>

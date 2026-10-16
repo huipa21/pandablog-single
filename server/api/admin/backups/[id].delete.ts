@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { listBackups, deleteBackupRecord, deleteSnapshotFiles, backupIdPart } from '../../../utils/backups/registry'
 import { acquireJob, releaseJob } from '../../../utils/backups/jobMutex'
 import { supportedFull } from '../../../utils/backups/contracts'
@@ -8,7 +8,7 @@ import { readBoundedJson } from '../../../utils/bounded-json'
 
 const schema = z.object({confirm_token: z.string().max(128), cascade: z.literal(false).optional()}).strict()
 export default defineEventHandler(async event => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const id = getRouterParam(event, 'id') ?? '', part = backupIdPart(id)
   const body = schema.safeParse(await readBoundedJson(event, 8 * 1024))
   if (!body.success || body.data.confirm_token !== `DELETE_${id}`) throw createError({statusCode: 400, message: 'Invalid backup deletion confirmation'})

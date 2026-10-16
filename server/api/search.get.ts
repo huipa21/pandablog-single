@@ -10,7 +10,7 @@ import type { SearchResponse, SearchSort } from '~/types/content'
 /**
  * Public search. Accepts the plain query (`q`) plus the advanced parameters
  * documented in utils/searchQuery.ts (keyword groups, categories incl.
- * sub-categories, tags, authors, date range). Keywords are optional when at
+ * sub-categories, tags, date range). Keywords are optional when at
  * least one filter is set.
  *
  * Results depend on the session (drafts for content managers, password /

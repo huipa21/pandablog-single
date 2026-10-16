@@ -1,10 +1,10 @@
 import { queryDb, useDb } from '../../../utils/db'
-import { requireContentManager } from '../../../utils/auth'
-import { firstRow, recordIdPart } from '../../../utils/surrealResult'
+import { requireOwner } from '../../../utils/auth'
+import { firstRow } from '../../../utils/surrealResult'
 import { normalizeTag, taxonomyName, uniqueTaxonomySlug } from '../../../utils/taxonomy'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  await requireOwner(event)
 
   const body = await readBody<Record<string, unknown>>(event)
   const name = taxonomyName(body.name)
@@ -13,8 +13,8 @@ export default defineEventHandler(async (event) => {
 
   const response = await queryDb(
     db,
-    'CREATE tag SET name = $name, slug = $slug, created_by = type::record($userTable, $userId);',
-    { name, slug, userTable: 'users', userId: recordIdPart(user.id, 'users') }
+    'CREATE tag SET name = $name, slug = $slug;',
+    { name, slug }
   )
   const created = firstRow<Record<string, unknown>>(response)
 

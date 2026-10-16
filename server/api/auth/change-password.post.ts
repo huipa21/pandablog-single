@@ -1,11 +1,11 @@
 import { readBoundedJson } from '../../utils/bounded-json'
 import { adminPasswordProblem } from '../../utils/admin-password'
-import { requireAuthenticatedUser } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { recordActivity } from '../../utils/activity'
 import { findUserById, setUserPassword, verifyUserPassword } from '../../utils/users'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthenticatedUser(event)
+  const user = await requireOwner(event)
   const body = await readBoundedJson(event, 8 * 1024)
   const currentPassword = typeof body.current_password === 'string' ? body.current_password : ''
   const newPassword = typeof body.new_password === 'string' ? body.new_password : ''
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     action: 'auth.password.change',
     resource_type: 'session',
     resource_id: user.id,
-    metadata: { username: user.username, role: user.role },
+    metadata: { username: user.username },
     description: 'User password changed'
   })
 

@@ -1,11 +1,11 @@
-import { requireContentManager } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { queryDb, useDb } from '../../utils/db'
 import { mediaInteger, mediaScope } from '../../utils/media-query'
 import { firstRow } from '../../utils/surrealResult'
 import { mediaListOrphanFiles } from '../../utils/mediaCleanup'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const query = getQuery(event)
   const olderThanDays = mediaInteger(query.older_than_days, 0, 0, 3650)
   const page = mediaInteger(query.page, 1, 1, 101), limit = mediaInteger(query.limit, 100, 1, 100)

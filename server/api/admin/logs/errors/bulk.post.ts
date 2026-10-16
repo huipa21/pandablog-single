@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireSuperadmin } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { deleteErrorLogsByIds, setErrorLogsReadState } from '../../../../utils/logging'
 
 const bulkErrorLogsSchema = z.object({
@@ -8,7 +8,7 @@ const bulkErrorLogsSchema = z.object({
 }).strict()
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   const parsed = bulkErrorLogsSchema.safeParse(await readBody(event))
   if (!parsed.success) {

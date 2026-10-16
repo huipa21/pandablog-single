@@ -1,10 +1,9 @@
 import { queryDb, queryDbRecord, useDb } from '../../../utils/db'
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { firstRow, recordIdPart } from '../../../utils/surrealResult'
-import { assertCanManageOwnedRecord, assertNoOtherAuthorTaxonomyUsage } from '../../../utils/permissions'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  await requireOwner(event)
 
   const id = recordIdPart(getRouterParam(event, 'id') ?? '', 'category')
   const db = await useDb()
@@ -13,11 +12,6 @@ export default defineEventHandler(async (event) => {
   if (!category) {
     throw createError({ statusCode: 404, message: 'Category not found' })
   }
-
-  assertCanManageOwnedRecord(user, category, {
-    ownerField: 'created_by',
-    message: 'You can only delete categories you created'
-  })
 
   if (category?.slug === 'default') {
     throw createError({ statusCode: 400, message: 'Default category cannot be deleted' })
@@ -32,8 +26,6 @@ export default defineEventHandler(async (event) => {
   if (firstRow(childResponse)) {
     throw createError({ statusCode: 400, message: 'Move or delete child categories first' })
   }
-
-  await assertNoOtherAuthorTaxonomyUsage(db, user, 'categorized_as', 'category', id)
 
   await queryDb(
     db,

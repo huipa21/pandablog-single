@@ -5,6 +5,7 @@ import { mediaInitializeLegacyState, mediaRecoverInterruptedObjects } from '../u
 import { mediaRecoverStageDirectories } from '../utils/media-upload'
 import { setupAuthority } from '../utils/setup-authority'
 import { ensureAuthEpochs } from '../utils/auth-epoch-migration'
+import { collapseToSingleOwner } from '../utils/single-owner-migration'
 import { applySchema, loadSchema, SCHEMA_HASH_KEY } from '../utils/schema'
 import { assertMediaStorageCompatible, ensureMediaStorageVersion } from '../utils/media-storage-migration'
 import { flattenBlockSearchText, flattenNodeText } from '../utils/blocks'
@@ -29,6 +30,7 @@ import {
 import { ADMIN_COLOR_MODE_KEY, DEFAULT_ADMIN_COLOR_MODE } from '~/utils/themeMode'
 
 const USER_TABLE_MIGRATION_KEY = '__user_table_migration_v1'
+const SINGLE_OWNER_MIGRATION_KEY = '__single_owner_migration_v1'
 const POST_VERSION_GRAPH_MIGRATION_KEY = '__post_version_graph_migration_v1'
 const POST_VERSION_DEDUP_MIGRATION_KEY = '__post_version_dedup_migration_v1'
 const POST_STATS_BACKFILL_KEY = '__post_stats_backfill_v2'
@@ -90,6 +92,7 @@ async function initializeDatabase() {
   }
 
   await bootStep('user-table-migration', () => ensureUserTableMigration(db))
+  await bootStep('single-owner-migration', () => ensureSingleOwnerMigration(db))
   await bootStep('auth-epoch-migration', () => ensureAuthEpochs(db))
   await bootStep('setup-authority', () => setupAuthority().status(db))
   await bootStep('post-version-graph-migration', () => ensurePostVersionGraphMigration(db))
@@ -171,7 +174,7 @@ async function ensureUserTableMigration(db: Awaited<ReturnType<typeof useDb>>) {
     { username: 'admin' },
     { label: 'seed admin user check', timeoutMs: 5_000 }
   )
-  let adminId = firstRow<{ id?: unknown }>(existingAdmin)?.id
+  const adminId = firstRow<{ id?: unknown }>(existingAdmin)?.id
 
   if (!adminId) {
     const legacyPassword = await queryDb(
@@ -183,12 +186,11 @@ async function ensureUserTableMigration(db: Awaited<ReturnType<typeof useDb>>) {
     const passwordHash = String(firstRow<{ value?: unknown }>(legacyPassword)?.value ?? '')
 
     if (passwordHash) {
-      const created = await queryDb(
+      await queryDb(
         db,
         `UPSERT type::record($table, $id) CONTENT {
           username: 'admin',
           password_hash: $passwordHash,
-          role: 'superadmin',
           display_name: 'Administrator',
           email: NONE,
           active: true,
@@ -199,24 +201,23 @@ async function ensureUserTableMigration(db: Awaited<ReturnType<typeof useDb>>) {
         { table: 'users', id: 'admin', passwordHash },
         { label: 'seed admin user create', timeoutMs: 10_000 }
       )
-      adminId = firstRow<{ id?: unknown }>(created)?.id
     }
   }
 
-  if (adminId) {
-    await queryDb(
-      db,
-      `UPDATE post SET author = $adminId WHERE author IS NONE;
-       UPDATE tag SET created_by = $adminId WHERE created_by IS NONE;
-       UPDATE category SET created_by = $adminId WHERE created_by IS NONE;
-       UPDATE files SET created_by = $adminId WHERE created_by IS NONE;
-       UPDATE files SET visibility = 'public' WHERE visibility IS NONE;`,
-      { adminId },
-      { label: 'ownership backfill to seed admin', timeoutMs: 30_000 }
-    )
-  }
-
+  await queryDb(db, `UPDATE files SET visibility = 'public' WHERE visibility IS NONE;`, undefined, { label: 'legacy file visibility backfill', timeoutMs: 30_000 })
   await setAppSetting(db, USER_TABLE_MIGRATION_KEY, new Date().toISOString(), 'user table migration marker')
+}
+
+async function ensureSingleOwnerMigration(db: Awaited<ReturnType<typeof useDb>>) {
+  const marker = await queryDb(
+    db,
+    'SELECT * FROM app_settings WHERE key = $key LIMIT 1;',
+    { key: SINGLE_OWNER_MIGRATION_KEY },
+    { label: 'single owner migration marker check', timeoutMs: 5_000 }
+  )
+  if (firstRow(marker)) return
+  await collapseToSingleOwner(db)
+  await setAppSetting(db, SINGLE_OWNER_MIGRATION_KEY, new Date().toISOString(), 'single owner migration marker')
 }
 
 async function ensurePostVersionGraphMigration(db: Awaited<ReturnType<typeof useDb>>) {

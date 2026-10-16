@@ -1,4 +1,4 @@
-import { requireContentManager, getRequestAuthAccount } from '../../../utils/auth'
+import { requireOwner, getRequestAuthAccount } from '../../../utils/auth'
 import { useDb } from '../../../utils/db'
 import { authorizedArchiveFiles } from '../../../utils/media-archive-policy'
 import { mediaArchiveStore } from '../../../utils/media-archives'
@@ -6,7 +6,7 @@ import { privateMediaHeaders } from '../../../utils/media-cache'
 
 export default defineEventHandler(async event => {
   privateMediaHeaders(event)
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const account = await getRequestAuthAccount(event, user.id)
   const filename = getRouterParam(event, 'filename') ?? ''
   let meta

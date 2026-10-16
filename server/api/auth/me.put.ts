@@ -1,5 +1,5 @@
 import { readBoundedJson } from '../../utils/bounded-json'
-import { requireAuthenticatedUser } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { queryDb, useDb } from '../../utils/db'
 import { mediaReadFileByHash } from '../../utils/mediaLibrary'
 import { mediaRecordVisibleToUser } from '../../utils/mediaPermissions'
@@ -9,7 +9,7 @@ import { recordIdPart } from '../../utils/surrealResult'
 import { findUserById, toSessionUser, updateUser } from '../../utils/users'
 
 export default defineEventHandler(async (event) => {
-  const sessionUser = await requireAuthenticatedUser(event)
+  const sessionUser = await requireOwner(event)
   const body = await readBoundedJson(event, 8 * 1024)
   for (const [field, limit] of [['display_name', 120], ['email', 254], ['avatar', 100]] as const) {
     const value = body[field]
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
   return { user }
 })
 
-async function assertAvatarMediaSelectable(user: Awaited<ReturnType<typeof requireAuthenticatedUser>>, avatar: string) {
+async function assertAvatarMediaSelectable(user: Awaited<ReturnType<typeof requireOwner>>, avatar: string) {
   const hash = recordIdPart(avatar, 'files')
   if (!/^[a-f0-9]{64}$/i.test(hash)) {
     throw createError({ statusCode: 400, message: 'Avatar must reference an existing media record' })

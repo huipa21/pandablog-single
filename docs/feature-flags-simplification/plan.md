@@ -27,9 +27,9 @@ There is also a real bug that must be fixed: `components/content/ContentRenderer
 | FF-D01 | `editor.enabled`, `editor.blocks.*` (20 blocks) | Always available in the editor; **always rendered** on public pages | No setting (not needed) |
 | FF-D02 | `logs.enabled`, `logs.activityLogs`, `logs.errorLogs` | Always compiled in | Existing Logs settings page (`enabled`, `activity_log_enabled`, `error_log_enabled`) |
 | FF-D03 | `analytics.enabled`, `analytics.geoip` | Always compiled in | Existing `analytics_enabled` setting (default **off**). GeoIP is active only if the operator places the `.mmdb` file |
-| FF-D04 | `users.enabled`, `users.multiUser` | Always multi-user. "Single-user mode" code is deleted | Just don't create other users |
+| FF-D04 | `users.enabled`, `users.multiUser` | **Superseded:** the app is now single-owner only (`users:admin`); roles, user management and per-author ownership were removed | Not applicable |
 | FF-D05 | `themes.enabled`, `themes.bundled.*` | All bundled themes always shipped (~100 KB total); theme management always available | Existing Themes settings page |
-| FF-D06 | `mfa.enabled` | Always available; each user opts in | Existing per-user MFA + `security_mfa_required_for_admins` |
+| FF-D06 | `mfa.enabled` | Always available; the owner opts in | Existing MFA + `security_mfa_required_for_admins` (now means "require MFA for the owner") |
 | FF-D07 | `securityAlerts.enabled` | Always compiled in | Existing `security_alerts_enabled` (default **off**) |
 | FF-D08 | `backups.enabled` | Always available | Existing Backups page |
 | FF-D09 | `graphView.enabled` | Compiled in; **new public setting** `graph_view_enabled` (default **on**) | Settings → General → "Public features" |

@@ -1,7 +1,7 @@
 import { reserveAuthAttempt } from '../../../../utils/rate-limit'
 import { readBoundedJson } from '../../../../utils/bounded-json'
 import { recordActivity } from '../../../../utils/activity'
-import { requireUser } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { disableUserMfa, getUserMfaState } from '../../../../utils/mfa/store'
 import { consumeMfaFactor } from '../../../../utils/mfa/factor'
 import { requestAbortSignal } from '../../../../utils/request-abort'
@@ -12,7 +12,7 @@ import { findUserById, verifyUserPassword } from '../../../../utils/users'
 // AND a current authenticator code (or an unused backup code) so a hijacked
 // session alone cannot turn off the second factor.
 export default defineEventHandler(async (event) => {
-  const sessionUser = await requireUser(event)
+  const sessionUser = await requireOwner(event)
   const body = await readBoundedJson(event, 8 * 1024)
   if (typeof body.password !== 'string' || body.password.length > 200 || typeof body.code !== 'string' || body.code.length > 64) throw createError({statusCode: 400, message: 'Invalid MFA input'})
   const password = body.password

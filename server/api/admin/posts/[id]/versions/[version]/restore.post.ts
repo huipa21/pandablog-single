@@ -1,14 +1,13 @@
 import { queryDb, queryDbRecord, useDb } from '../../../../../../utils/db'
 import { buildDocFromBlocks, computeStatsFromBlocks, loadBlocksForPost, restorePostVersion } from '../../../../../../utils/blocks'
 import { recordIdPart } from '../../../../../../utils/surrealResult'
-import { requireContentManager } from '../../../../../../utils/auth'
-import { assertCanManagePostRecord } from '../../../../../../utils/permissions'
+import { requireOwner } from '../../../../../../utils/auth'
 import { normalizePost } from '../../../../../../utils/content'
 import { syncPostSearchTerms } from '../../../../../../utils/searchTerms'
 import { mediaCascadeVisibilityForPost } from '../../../../../../utils/referenceTracker'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const id = recordIdPart(getRouterParam(event, 'id') ?? '', 'post')
   const version = String(getRouterParam(event, 'version') ?? '').trim()
   if (!version) {
@@ -20,7 +19,6 @@ export default defineEventHandler(async (event) => {
   if (!post) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
-  assertCanManagePostRecord(user, post)
 
   const previousBlocks = await loadBlocksForPost(db, `post:${id}`)
   const blocks = await restorePostVersion(db, `post:${id}`, version, previousBlocks, user)

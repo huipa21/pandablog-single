@@ -28,7 +28,7 @@ async function renameReplacing(from: string, to: string) {
 }
 interface Receipt {version: 1, state: 'reserved' | 'closed', claim: string, epoch: string}
 export interface SetupReservation {readonly claim: string, readonly epoch: string}
-const evidenceSql = `SELECT id, active, role FROM users WHERE username = 'admin' LIMIT 1;
+const evidenceSql = `SELECT id, active FROM users WHERE username = 'admin' LIMIT 1;
   SELECT key, \`value\` FROM app_settings WHERE key IN ['setup_completed', 'admin_password_hash', '__setup_claim'] LIMIT 3;`
 
 /** Monotonic one-time bootstrap authority OUTSIDE the database that restore
@@ -85,7 +85,7 @@ export class SetupAuthority {
   private async evidence(db: Database): Promise<{initialized: boolean, ownerReady: boolean}> {
     try {
       const rows = await queryDb(db, evidenceSql, undefined, {retryOnReconnect: false, label: 'one-time setup evidence'})
-      const owner = firstRow<{id?: unknown, active?: boolean, role?: string}>(rows)
+      const owner = firstRow<{id?: unknown, active?: boolean}>(rows)
       let initialized = Boolean(owner)
       for (const row of queryRows<{key: string, value?: unknown}>(rows, 1)) {
         if (row.key === 'setup_completed') {
@@ -99,7 +99,7 @@ export class SetupAuthority {
           initialized ||= Boolean(row.value)
         }
       }
-      return {initialized, ownerReady: owner?.active === true && owner.role === 'superadmin' && stringifyRecordId(owner.id) === 'users:admin'}
+      return {initialized, ownerReady: owner?.active === true && stringifyRecordId(owner.id) === 'users:admin'}
     } catch {throw this.unavailable('Setup state unavailable')}
   }
   async status(db: Database): Promise<{completed: boolean, recoveryRequired: boolean}> {
@@ -187,7 +187,7 @@ export async function createSetupOwner(db: Database, passwordHash: string, reser
         OR array::len((SELECT id FROM app_settings WHERE (key = 'setup_completed' AND \`value\` = true)
           OR (key = 'admin_password_hash' AND \`value\` IS NOT NONE AND \`value\` != '') OR key = '__setup_claim' LIMIT 1)) > 0 { THROW 'SETUP_ALREADY_COMPLETED'; };
       CREATE users:admin CONTENT {username: 'admin', password_hash: $passwordHash, auth_epoch: $epoch,
-        role: 'superadmin', display_name: 'Administrator', active: true};
+        display_name: 'Administrator', active: true};
       DELETE app_settings WHERE key IN ['admin_username', 'admin_password_hash', 'setup_completed', '__setup_claim'] RETURN NONE;
       CREATE app_settings:admin_username CONTENT {key: 'admin_username', value: 'admin', updated_at: time::now()};
       CREATE app_settings:admin_password_hash CONTENT {key: 'admin_password_hash', value: $passwordHash, updated_at: time::now()};

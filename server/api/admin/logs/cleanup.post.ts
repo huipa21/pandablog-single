@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { runManualLogCleanup } from '../../../utils/logging'
 
 const cleanupSchema = z.discriminatedUnion('mode', [
@@ -16,7 +16,7 @@ const cleanupSchema = z.discriminatedUnion('mode', [
 ])
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const body = await readBody<unknown>(event)
   const parsed = cleanupSchema.safeParse(body)
 

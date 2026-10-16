@@ -32,7 +32,6 @@ DEFINE TABLE OVERWRITE users SCHEMAFULL PERMISSIONS NONE;
 DEFINE FIELD IF NOT EXISTS username ON users TYPE string;
 DEFINE FIELD IF NOT EXISTS password_hash ON users TYPE string;
 DEFINE FIELD IF NOT EXISTS auth_epoch ON users TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS role ON users TYPE string DEFAULT 'viewer' ASSERT $value IN ['superadmin', 'admin', 'author', 'viewer'];
 DEFINE FIELD IF NOT EXISTS display_name ON users TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS email ON users TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS avatar ON users TYPE option<record<files>> DEFAULT NONE;
@@ -46,7 +45,6 @@ DEFINE FIELD IF NOT EXISTS totp_last_step ON users TYPE option<int> DEFAULT NONE
 DEFINE FIELD IF NOT EXISTS created_at ON users TYPE datetime DEFAULT time::now();
 DEFINE FIELD IF NOT EXISTS updated_at ON users TYPE datetime DEFAULT time::now();
 DEFINE INDEX IF NOT EXISTS users_username_unique ON TABLE users COLUMNS username UNIQUE;
-DEFINE INDEX IF NOT EXISTS users_role ON TABLE users FIELDS role;
 
 -- ============ TRUSTED DEVICES (MFA) ============
 DEFINE TABLE OVERWRITE trusted_devices SCHEMAFULL PERMISSIONS NONE;
@@ -71,8 +69,6 @@ DEFINE FIELD IF NOT EXISTS slug ON post TYPE string;
 DEFINE FIELD IF NOT EXISTS summary ON post TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS status ON post TYPE string DEFAULT 'draft' ASSERT $value IN ['draft', 'published', 'archived'];
 DEFINE FIELD IF NOT EXISTS cover_image ON post TYPE option<string>;
-DEFINE FIELD IF NOT EXISTS author ON post TYPE option<record<users>> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS author_username ON post TYPE string DEFAULT 'admin';
 DEFINE FIELD IF NOT EXISTS published_at ON post TYPE option<datetime>;
 DEFINE FIELD IF NOT EXISTS created_at ON post TYPE datetime DEFAULT time::now();
 DEFINE FIELD IF NOT EXISTS updated_at ON post TYPE datetime DEFAULT time::now();
@@ -85,7 +81,6 @@ UPDATE post SET word_count = 0 WHERE word_count IS NONE;
 UPDATE post SET cjk_char_count = 0 WHERE cjk_char_count IS NONE;
 DEFINE INDEX IF NOT EXISTS post_slug_unique ON TABLE post COLUMNS slug UNIQUE;
 DEFINE INDEX IF NOT EXISTS post_status ON TABLE post COLUMNS status;
-DEFINE INDEX IF NOT EXISTS post_author ON TABLE post FIELDS author;
 DEFINE INDEX IF NOT EXISTS post_published_at ON TABLE post COLUMNS published_at;
 DEFINE INDEX IF NOT EXISTS post_created_at ON TABLE post FIELDS created_at;
 DEFINE INDEX IF NOT EXISTS post_updated_at ON TABLE post FIELDS updated_at;
@@ -98,19 +93,15 @@ DEFINE INDEX IF NOT EXISTS post_summary_fts ON TABLE post COLUMNS summary FULLTE
 DEFINE TABLE OVERWRITE tag SCHEMAFULL PERMISSIONS NONE;
 DEFINE FIELD IF NOT EXISTS name ON tag TYPE string;
 DEFINE FIELD IF NOT EXISTS slug ON tag TYPE string;
-DEFINE FIELD IF NOT EXISTS created_by ON tag TYPE option<record<users>> DEFAULT NONE;
 DEFINE INDEX IF NOT EXISTS tag_slug_unique ON TABLE tag COLUMNS slug UNIQUE;
-DEFINE INDEX IF NOT EXISTS tag_created_by ON TABLE tag FIELDS created_by;
 
 DEFINE TABLE OVERWRITE category SCHEMAFULL PERMISSIONS NONE;
 DEFINE FIELD IF NOT EXISTS name ON category TYPE string;
 DEFINE FIELD IF NOT EXISTS slug ON category TYPE string;
 DEFINE FIELD IF NOT EXISTS description ON category TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS parent ON category TYPE option<record<category>> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS created_by ON category TYPE option<record<users>> DEFAULT NONE;
 DEFINE INDEX IF NOT EXISTS category_slug_unique ON TABLE category COLUMNS slug UNIQUE;
 DEFINE INDEX IF NOT EXISTS category_parent ON TABLE category FIELDS parent;
-DEFINE INDEX IF NOT EXISTS category_created_by ON TABLE category FIELDS created_by;
 
 DEFINE TABLE OVERWRITE tagged TYPE RELATION FROM post TO tag PERMISSIONS NONE;
 DEFINE INDEX IF NOT EXISTS tagged_in ON TABLE tagged FIELDS in;
@@ -162,7 +153,6 @@ DEFINE FIELD OVERWRITE diff.*.oldHash ON versions TYPE option<string> DEFAULT NO
 DEFINE FIELD OVERWRITE diff.*.newHash ON versions TYPE option<string> DEFAULT NONE;
 DEFINE FIELD OVERWRITE diff.*.oldIndex ON versions TYPE option<int> DEFAULT NONE;
 DEFINE FIELD OVERWRITE diff.*.newIndex ON versions TYPE option<int> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS created_by ON versions TYPE option<record<users>> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS created_at ON versions TYPE datetime DEFAULT time::now();
 DEFINE INDEX IF NOT EXISTS versions_version ON TABLE versions FIELDS version;
 DEFINE INDEX IF NOT EXISTS versions_datetime ON TABLE versions FIELDS datetime;
@@ -182,15 +172,6 @@ DEFINE FIELD IF NOT EXISTS seq ON has_blocks TYPE int;
 DEFINE INDEX IF NOT EXISTS has_blocks_in_seq ON TABLE has_blocks FIELDS in, seq;
 DEFINE INDEX IF NOT EXISTS has_blocks_out ON TABLE has_blocks FIELDS out;
 
--- ============ EDIT_LOCK (single active editor per post) ============
-DEFINE TABLE OVERWRITE edit_lock SCHEMAFULL PERMISSIONS NONE;
-DEFINE FIELD IF NOT EXISTS post ON edit_lock TYPE record<post>;
-DEFINE FIELD IF NOT EXISTS holder_username ON edit_lock TYPE string;
-DEFINE FIELD IF NOT EXISTS holder_display ON edit_lock TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS acquired_at ON edit_lock TYPE datetime DEFAULT time::now();
-DEFINE FIELD IF NOT EXISTS heartbeat_at ON edit_lock TYPE datetime DEFAULT time::now();
-DEFINE INDEX IF NOT EXISTS edit_lock_post ON TABLE edit_lock FIELDS post UNIQUE;
-
 -- ============ LINKS (post -> post bidirectional relation) ============
 DEFINE TABLE OVERWRITE links TYPE RELATION FROM post TO post SCHEMAFULL PERMISSIONS NONE;
 DEFINE FIELD IF NOT EXISTS created_at ON links TYPE datetime DEFAULT time::now();
@@ -201,8 +182,6 @@ DEFINE INDEX IF NOT EXISTS links_out ON TABLE links FIELDS out;
 DEFINE FIELD IF NOT EXISTS visibility ON post TYPE string DEFAULT 'public' ASSERT $value IN ['public', 'private', 'password'];
 DEFINE FIELD IF NOT EXISTS password_hash ON post TYPE option<string> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS password_hint ON post TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS password_source ON post TYPE string DEFAULT 'custom' ASSERT $value IN ['custom', 'user'];
-DEFINE FIELD IF NOT EXISTS password_owner ON post TYPE option<record<users>> DEFAULT NONE;
 DEFINE INDEX IF NOT EXISTS post_visibility ON TABLE post FIELDS visibility;
 
 -- ============ APP SETTING for site-wide mode ============
@@ -243,11 +222,9 @@ DEFINE FIELD IF NOT EXISTS reference_safe ON files TYPE bool DEFAULT false;
 DEFINE FIELD IF NOT EXISTS reference_count ON files TYPE int DEFAULT 0;
 DEFINE FIELD IF NOT EXISTS referenced_by ON files TYPE array<record> DEFAULT [];
 DEFINE FIELD IF NOT EXISTS visibility ON files TYPE string DEFAULT 'public' ASSERT $value IN ['public', 'private'];
-DEFINE FIELD IF NOT EXISTS created_by ON files TYPE option<record<users>> DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS original_path ON files TYPE string;
 DEFINE FIELD IF NOT EXISTS variants ON files TYPE option<object> FLEXIBLE DEFAULT NONE;
 DEFINE FIELD IF NOT EXISTS perceptual_hash ON files TYPE option<string> DEFAULT NONE;
-DEFINE FIELD IF NOT EXISTS uploaded_by ON files TYPE option<string> DEFAULT NONE;
 DEFINE FIELD OVERWRITE storage_path ON files TYPE option<string> DEFAULT NONE;
 DEFINE FIELD OVERWRITE thumbnail_path ON files TYPE option<string> DEFAULT NONE;
 DEFINE INDEX IF NOT EXISTS files_hash_unique ON TABLE files FIELDS hash UNIQUE;
@@ -258,7 +235,6 @@ DEFINE INDEX IF NOT EXISTS files_mime_type ON TABLE files FIELDS mime_type;
 DEFINE INDEX IF NOT EXISTS files_is_image ON TABLE files FIELDS is_image;
 DEFINE INDEX IF NOT EXISTS files_reference_count ON TABLE files FIELDS reference_count;
 DEFINE INDEX IF NOT EXISTS files_visibility ON TABLE files FIELDS visibility;
-DEFINE INDEX IF NOT EXISTS files_created_by ON TABLE files FIELDS created_by;
 
 -- ============ MEDIA TAGS ============
 -- File tags are stored independently in files.tags and are not shared with post tags.

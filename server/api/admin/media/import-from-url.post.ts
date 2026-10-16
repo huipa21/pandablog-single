@@ -1,4 +1,4 @@
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { useDb } from '../../../utils/db'
 import { mediaCreateOrReuseFileRecord } from '../../../utils/mediaLibrary'
 import { getMediaSettings } from '../../../utils/settings'
@@ -11,7 +11,7 @@ const EXT_BY_MIME: Record<string, string> = {
   'image/gif': 'gif', 'image/webp': 'webp', 'image/avif': 'avif'
 }
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event), body = await readBoundedJson(event, 8 * 1024)
+  const user = await requireOwner(event), body = await readBoundedJson(event, 8 * 1024)
   const rawUrl = typeof body.url === 'string' ? body.url.trim() : ''
   if (!rawUrl || rawUrl.length > 4096) throw createError({statusCode: 400, message: 'Invalid URL'})
   const controller = new AbortController()
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     const settings = await getMediaSettings()
     stage = await stageMediaBuffer(downloaded.body, filenameFromUrl(downloaded.url, mimeType), mimeType)
     downloaded.body = Buffer.alloc(0) // Queued work retains only the owned path.
-    const result = await mediaCreateOrReuseFileRecord(await useDb(), {...stage.file, uploadedBy: user.username, createdBy: user.id, user, visibility: 'public', signal: controller.signal}, settings)
+    const result = await mediaCreateOrReuseFileRecord(await useDb(), {...stage.file, user, visibility: 'public', signal: controller.signal}, settings)
     const record = result.record ?? result.similar_to
     if (!record) throw createError({statusCode: 400, message: result.reason || 'Could not import file'})
     return record

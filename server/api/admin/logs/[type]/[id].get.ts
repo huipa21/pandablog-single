@@ -1,9 +1,9 @@
-import { requireSuperadmin } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { parseLogType } from '../../../../utils/logging-admin'
 import { readLogById } from '../../../../utils/logging'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   const params = getRouterParams(event)
   if (!params.type) {

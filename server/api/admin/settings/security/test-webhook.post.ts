@@ -1,4 +1,4 @@
-import { requireSuperadmin } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { alertDetailsFromEvent, deliverTestAlert } from '../../../../utils/notify/security-alert'
 import { getSecuritySettings } from '../../../../utils/settings'
 
@@ -8,7 +8,7 @@ import { getSecuritySettings } from '../../../../utils/settings'
  * otherwise the currently saved webhook URL.
  */
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   const body = await readBody<{ url?: string }>(event).catch((): { url?: string } => ({}))
   const provided = typeof body?.url === 'string' ? body.url.trim() : ''

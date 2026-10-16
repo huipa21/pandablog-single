@@ -5,8 +5,8 @@ import { mediaRecordVisibleToUser } from './mediaPermissions'
 import { queryRows } from './surrealResult'
 import type { SessionUser } from './users'
 
-const sourceSql = 'SELECT id, hash, original_name, original_path, size, visibility, created_by, uploaded_by, storage_state FROM files WHERE hash IN $hashes LIMIT 200;'
-const policySql = 'SELECT id, hash, visibility, created_by, uploaded_by, storage_state FROM files WHERE hash IN $hashes LIMIT 200;'
+const sourceSql = 'SELECT id, hash, original_name, original_path, size, visibility, storage_state FROM files WHERE hash IN $hashes LIMIT 200;'
+const policySql = 'SELECT id, hash, visibility, storage_state FROM files WHERE hash IN $hashes LIMIT 200;'
 
 export async function authorizedArchiveFiles(db: Awaited<ReturnType<typeof useDb>>, hashes: string[], user: SessionUser, sources: boolean) {
   if (!hashes.length || hashes.length > 200 || new Set(hashes).size !== hashes.length || !hashes.every(hash => /^[a-f0-9]{64}$/.test(hash))) throw createError({statusCode: 400, message: 'Invalid file selection'})

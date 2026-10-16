@@ -1,9 +1,9 @@
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { parseLogType } from '../../../utils/logging-admin'
 import { purgeLogType } from '../../../utils/logging'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   // H3 can select this DELETE handler through a static GET route without
   // retaining params. Keep retired access in parsing only to reject it safely.

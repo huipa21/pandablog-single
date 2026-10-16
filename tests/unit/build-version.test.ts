@@ -10,7 +10,7 @@ import { fixtureEnvironment } from '../../scripts/backend-hardening/fixture'
 const generator = fileURLToPath(new URL('../../scripts/version.mjs', import.meta.url))
 const env = fixtureEnvironment()
 const roots: string[] = []
-const auth = vi.hoisted(() => ({ requireAdminTier: vi.fn() }))
+const auth = vi.hoisted(() => ({ requireOwner: vi.fn() }))
 vi.mock('../../server/utils/auth', () => auth)
 
 function git(cwd: string, ...args: string[]) {
@@ -156,7 +156,7 @@ describe('admin-only build version endpoint', () => {
     ['v1.0.0', null, null, null, false]
   ])('displays %s without inventing metadata', async (version, date, sha, sequence, dirty) => {
     const result = await (await handler(version as string))(event)
-    expect(auth.requireAdminTier).toHaveBeenCalledExactlyOnceWith(event)
+    expect(auth.requireOwner).toHaveBeenCalledExactlyOnceWith(event)
     expect(result).toEqual({ version, date, commit: sha, sequence, dirty, node: process.version })
   })
 
@@ -164,7 +164,7 @@ describe('admin-only build version endpoint', () => {
     const route = await handler('20261010T053130Z-g4c426999aa95')
     const runtime = vi.fn()
     vi.stubGlobal('useRuntimeConfig', runtime)
-    auth.requireAdminTier.mockRejectedValue(new Error('Unauthorized'))
+    auth.requireOwner.mockRejectedValue(new Error('Unauthorized'))
     await expect(route(event)).rejects.toThrow('Unauthorized')
     expect(runtime).not.toHaveBeenCalled()
   })

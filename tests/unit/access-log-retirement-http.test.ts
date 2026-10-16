@@ -3,8 +3,8 @@ import type { AddressInfo } from 'node:net'
 import { createApp, createError, createRouter, defineEventHandler, getQuery, getRequestURL, getRouterParams, readBody, setHeader, toNodeListener } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ requireSuperadmin: vi.fn(), readLogById: vi.fn(), purgeLogType: vi.fn(), runManualLogCleanup: vi.fn(), useDb: vi.fn(), queryDb: vi.fn() }))
-vi.mock('../../server/utils/auth', () => ({ requireSuperadmin: mocks.requireSuperadmin }))
+const mocks = vi.hoisted(() => ({ requireOwner: vi.fn(), readLogById: vi.fn(), purgeLogType: vi.fn(), runManualLogCleanup: vi.fn(), useDb: vi.fn(), queryDb: vi.fn() }))
+vi.mock('../../server/utils/auth', () => ({ requireOwner: mocks.requireOwner }))
 vi.mock('../../server/utils/logging', () => mocks)
 vi.mock('../../server/utils/db', () => mocks)
 let server: Server | undefined, base: string
@@ -12,7 +12,7 @@ beforeEach(async () => {
   vi.resetModules(); vi.resetAllMocks()
   for (const [key, value] of Object.entries({ createError, defineEventHandler, getQuery, getRequestURL, getRouterParams, readBody, setHeader })) vi.stubGlobal(key, value)
   vi.stubGlobal('useRuntimeConfig', () => ({ public: {} }))
-  mocks.requireSuperadmin.mockResolvedValue({ role: 'superadmin' })
+  mocks.requireOwner.mockResolvedValue({ id: 'users:admin', username: 'admin' })
   const app = createApp(), router = createRouter()
   router.get('/api/admin/logs/:type/export', (await import('../../server/api/admin/logs/[type]/export.get')).default)
   router.get('/api/admin/logs/:type/:id', (await import('../../server/api/admin/logs/[type]/[id].get')).default)
@@ -43,7 +43,7 @@ describe('retired access HTTP contracts', () => {
     expect(response.status).toBe(400); noHistoryOperations()
   })
   it.each([401, 403])('retained generic handlers still authorize first (HTTP %i)', async statusCode => {
-    mocks.requireSuperadmin.mockRejectedValue(createError({ statusCode, message: 'Denied' }))
+    mocks.requireOwner.mockRejectedValue(createError({ statusCode, message: 'Denied' }))
     expect((await fetch(base + '/api/admin/logs/access/export')).status).toBe(statusCode)
     noHistoryOperations()
   })

@@ -1,8 +1,8 @@
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { updatePostVersioningSettings, type PostVersioningSettings } from '../../../utils/settings'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const body = await readBody<Partial<PostVersioningSettings>>(event)
   const snapshotLimit = Number(body?.snapshot_limit ?? 20)
   const settings: PostVersioningSettings = {

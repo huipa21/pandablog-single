@@ -8,7 +8,7 @@ import { Surreal } from 'surrealdb'
 import { describe, expect, it, vi } from 'vitest'
 import { startFixture } from '../../scripts/backend-hardening/fixture'
 import { ensureAuthEpochs } from '../../server/utils/auth-epoch-migration'
-import { createUserWithPasswordHash, deleteUser, findAuthAccountById, findUserById, setUserPasswordHash, updateUser } from '../../server/utils/users'
+import { findAuthAccountById, findUserById, newAuthEpoch, setUserPasswordHash, updateUser } from '../../server/utils/users'
 import { generate, generateSecret } from 'otplib'
 import { encryptMfaSecret, decryptMfaSecret } from '../../server/utils/mfa/secret-crypto'
 import { verifyTotpToken } from '../../server/utils/mfa/totp'
@@ -30,7 +30,7 @@ vi.mock('../../server/utils/db', () => ({
 }))
 
 describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real current-account security SQL', () => {
-  it('password reset uses scoped existing-user-only SQL, rotates epoch and preserves role/active/MFA', async () => {
+  it('password reset uses scoped existing-user-only SQL, rotates epoch and preserves active/MFA', async () => {
     const fixture = await startFixture({enabled: process.env.PB_BACKEND_FIXTURE, binary: process.env.PB_BACKEND_SURREAL_BIN ?? ''})
     const root = new Surreal(), scoped = new Surreal(), password = randomBytes(24).toString('hex'), credential = randomBytes(24).toString('hex')
     try {
@@ -40,15 +40,15 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real current-account se
       const raw = await readFile('server/utils/schema.surql', 'utf8')
       await root.query(raw.slice(raw.indexOf('DEFINE TABLE OVERWRITE users'), raw.indexOf('-- ============ POST (')))
       await root.query(`DEFINE USER fixture_reset ON DATABASE PASSWORD '${credential}' ROLES EDITOR;`)
-      await root.query("CREATE users:fixture CONTENT {username: 'fixture', password_hash: 'synthetic-old', role: 'viewer', active: false, auth_epoch: $epoch, totp_enabled: true, totp_secret: 'fixture-sealed'};", {epoch: 'a'.repeat(48)})
+      await root.query("CREATE users:fixture CONTENT {username: 'fixture', password_hash: 'synthetic-old', active: false, auth_epoch: $epoch, totp_enabled: true, totp_secret: 'fixture-sealed'};", {epoch: 'a'.repeat(48)})
       await scoped.connect(`${fixture.endpoint.replace('http:', 'ws:')}/rpc`, {reconnect: {enabled: false}})
       await scoped.signin({namespace: fixture.namespace, database: fixture.database, username: 'fixture_reset', password: credential})
       await scoped.use({namespace: fixture.namespace, database: fixture.database})
       await resetPassword(scoped, 'fixture', password, password)
-      const row = (await scoped.query<[Array<{password_hash: string, auth_epoch: string, role: string, active: boolean, totp_enabled: boolean, totp_secret: string}>]>('SELECT * FROM users:fixture;'))[0]![0]!
+      const row = (await scoped.query<[Array<{password_hash: string, auth_epoch: string, active: boolean, totp_enabled: boolean, totp_secret: string}>]>('SELECT * FROM users:fixture;'))[0]![0]!
       expect(await argon2.verify(row.password_hash, password)).toBe(true)
       expect(row.auth_epoch).not.toBe('a'.repeat(48))
-      expect(row).toMatchObject({role: 'viewer', active: false, totp_enabled: true, totp_secret: 'fixture-sealed'})
+      expect(row).toMatchObject({active: false, totp_enabled: true, totp_secret: 'fixture-sealed'})
       await expect(resetPassword(scoped, 'unknown', password, password)).rejects.toMatchObject({uncertain: false})
       expect((await scoped.query<[Array<{count: number}>]>('SELECT count() AS count FROM users GROUP ALL;'))[0]![0]!.count).toBe(1)
       console.info(JSON.stringify({evidence: 'owned-scoped-reset-SQL-not-interactive-container', node: process.version, surreal: (await root.version()).version}))
@@ -66,8 +66,8 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real current-account se
       const raw = await readFile('server/utils/schema.surql', 'utf8')
       const schema = raw.slice(raw.indexOf('DEFINE TABLE OVERWRITE users'), raw.indexOf('-- ============ POST ('))
       await db.query(schema)
-      await db.query("CREATE users:legacy CONTENT {username: 'legacy', password_hash: 'synthetic', role: 'viewer', active: true};")
-      await db.query("CREATE users:legacytwo CONTENT {username: 'legacytwo', password_hash: 'synthetic', role: 'viewer', active: true};")
+      await db.query("CREATE users:legacy CONTENT {username: 'legacy', password_hash: 'synthetic', active: true};")
+      await db.query("CREATE users:legacytwo CONTENT {username: 'legacytwo', password_hash: 'synthetic', active: true};")
       owned.interruptAfter = 1
       await expect(ensureAuthEpochs(db)).rejects.toThrow('synthetic interruption')
       const partial = await findUserById('users:legacy')
@@ -77,16 +77,14 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real current-account se
       expect(migrated).toMatch(/^[a-f0-9]{48}$/)
       await ensureAuthEpochs(db)
       expect((await findUserById('users:legacy'))!.auth_epoch).toBe(migrated)
-      const created = await createUserWithPasswordHash({username: 'fixture', password_hash: 'synthetic', role: 'author'})
-      expect(created).not.toHaveProperty('auth_epoch')
-      expect(created).not.toHaveProperty('password_hash')
-      expect(await findAuthAccountById(created.id)).toMatchObject({id: created.id, role: 'author', active: true})
+      const createOwner = (passwordHash: string) => db.query("CREATE users:admin CONTENT {username: 'admin', password_hash: $passwordHash, active: true, auth_epoch: $epoch};", {passwordHash, epoch: newAuthEpoch()})
+      await createOwner('synthetic')
+      const created = {id: 'users:admin'}
+      expect(await findAuthAccountById(created.id)).toMatchObject({id: created.id, active: true})
+      expect(await findAuthAccountById('users:legacy')).toBeNull()
       let epoch = (await findUserById(created.id))!.auth_epoch
       const originals = new Set([epoch])
       for (const action of [
-        () => updateUser(created.id, {role: 'viewer'}),
-        () => updateUser(created.id, {active: false}),
-        () => updateUser(created.id, {active: true}),
         () => setUserPasswordHash(created.id, 'reset-synthetic'),
         () => enableUserMfa(created.id, {encryptedSecret: 'synthetic-encrypted', backupCodeHashes: ['synthetic-code'], authEpoch: epoch}),
         () => disableUserMfa(created.id, epoch)
@@ -124,7 +122,7 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real current-account se
       const claims = await Promise.all(Array.from({length: 20}, () => consumeRecoveryHash(created.id, factor, 'fixture-hash-a')))
       expect(claims.filter(Boolean)).toHaveLength(1)
       expect(await Promise.all(['fixture-hash-b', 'fixture-hash-c'].map(hash => consumeRecoveryHash(created.id, factor, hash)))).toEqual([true, true])
-      expect((await db.query<[Array<{totp_backup_codes: string[]}>]>('SELECT totp_backup_codes FROM users:fixture;'))[0]?.[0]?.totp_backup_codes).toEqual([])
+      expect((await db.query<[Array<{totp_backup_codes: string[]}>]>('SELECT totp_backup_codes FROM users:admin;'))[0]?.[0]?.totp_backup_codes).toEqual([])
       const fixedTime = 1_800_000_000
       const token = await generate({secret, epoch: fixedTime})
       const step = await verifyTotpToken(secret, token, fixedTime)
@@ -133,12 +131,12 @@ describe.skipIf(process.env.PB_BACKEND_FIXTURE !== '1')('real current-account se
       expect(totpClaims.filter(Boolean)).toHaveLength(1)
       expect(await claimTotpStep(created.id, factor, step! + 1)).toBe(true)
       expect(await claimTotpStep(created.id, factor, step!)).toBe(false)
-      await updateUser(created.id, {active: false})
+      await db.query('UPDATE users:admin SET active = false;')
       expect(await claimTotpStep(created.id, factor, step! + 2)).toBe(false)
       const prior = (await findUserById(created.id))!.auth_epoch
-      await deleteUser(created.id)
+      await db.query('DELETE users:admin;')
       expect(await findUserById(created.id)).toBeNull()
-      await createUserWithPasswordHash({username: 'fixture', password_hash: 'new-synthetic', role: 'author'})
+      await createOwner('new-synthetic')
       expect((await findUserById(created.id))!.auth_epoch).not.toBe(prior)
       process.stdout.write(JSON.stringify({evidence: 'REV-1.1-and-1.2-local-real-security-SQL-not-production', node: process.version, surreal: (await db.version()).version, sdk: '2.0.3'}) + '\n')
     } finally {owned.db = null; vi.unstubAllGlobals(); try {await db.close()} finally {await fixture.stop()} }

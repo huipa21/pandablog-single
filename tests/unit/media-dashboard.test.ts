@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mediaDashboard } from '../../server/utils/media-dashboard'
 const query = vi.hoisted(() => vi.fn())
 vi.mock('../../server/utils/db', () => ({queryDb: query}))
-const user = {id: 'users:fixture', username: 'fixture', role: 'author' as const}
+const user = {id: 'users:admin', username: 'admin'}
 const range = {range: 'all', start: null, end: new Date('2026-10-06')}
 beforeEach(() => query.mockReset())
 describe('bounded scoped media dashboard', () => {
@@ -22,7 +22,7 @@ describe('bounded scoped media dashboard', () => {
     expect(sql).toContain('math::sum(size)'); expect(sql).toContain('GROUP ALL')
     expect(sql).toContain('array::len(referenced_by) AS referenced_by_count')
     expect(sql.match(/LIMIT 10/g)).toHaveLength(4)
-    expect(sql).toContain("visibility = 'private'"); expect(sql).toContain('uploaded_at >= $from')
+    expect(sql).toContain("visibility IN ['public', 'private']"); expect(sql).toContain('uploaded_at >= $from')
     expect(sql).not.toMatch(/SELECT \*|reference_count, referenced_by,/)
   })
   it('does not turn absent/malformed counts into zero', async () => {

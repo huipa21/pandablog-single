@@ -1,4 +1,4 @@
-import { requireSuperadmin } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { backupIdPart, getBackup } from '../../../../utils/backups/registry'
 import { supportedFull } from '../../../../utils/backups/contracts'
 import { ensureBundle } from '../../../../utils/backups/package'
@@ -7,7 +7,7 @@ import { sendBackupFile, rejectConsolidation } from '../../../../utils/backups/d
 import { BUNDLE_LIMITS } from '../../../../utils/backups/bundle'
 
 export default defineEventHandler(async event => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   rejectConsolidation(event)
   const id = getRouterParam(event, 'id') ?? '', part = backupIdPart(id)
   const release = await acquireSnapshotRead(id)

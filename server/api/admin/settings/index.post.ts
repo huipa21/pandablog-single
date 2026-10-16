@@ -1,9 +1,9 @@
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { invalidatePublicBootstrapCache } from '../../../utils/publicBootstrap'
 import { ADMIN_SETTING_KEYS, filterAdminSettings, readAppSettings, writeAppSettings } from '../../../utils/settings'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   const body = await readBody<Record<string, unknown>>(event)
   if (!body || typeof body !== 'object' || Array.isArray(body)) {

@@ -6,7 +6,7 @@ import { wrapMaintenanceHandler } from '../../server/utils/maintenance-handler'
 
 const visibility = vi.hoisted(() => vi.fn().mockRejectedValue(new Error('readiness must not contact visibility DB')))
 vi.mock('../../server/utils/visibility', () => ({getSiteVisibility: visibility}))
-vi.mock('../../server/utils/auth', () => ({isAuthenticated: vi.fn()}))
+vi.mock('../../server/utils/auth', () => ({isOwner: vi.fn()}))
 const status = vi.hoisted(() => ({state: 'recovery-required', ready: false, failure: {phase: 'recovery', category: 'restore-recovery-required'}}))
 vi.mock('../../server/utils/startup', () => ({startup: {status: () => status, guidance: () => ({action: 'run-recovery-assistant', recoveryRequired: true})}}))
 afterEach(() => vi.unstubAllGlobals())

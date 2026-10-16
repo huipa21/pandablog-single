@@ -3,11 +3,11 @@ import { createApp, createError, defineEventHandler, getQuery, toNodeListener } 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({auth: vi.fn(), dashboard: vi.fn(), query: vi.fn()}))
-vi.mock('../../server/utils/auth', () => ({requireContentManager: mocks.auth}))
+vi.mock('../../server/utils/auth', () => ({requireOwner: mocks.auth}))
 vi.mock('../../server/utils/db', () => ({useDb: async () => ({}), queryDb: mocks.query}))
 vi.mock('../../server/utils/settings', () => ({getMediaSettings: async () => ({oversized_image_threshold_mb: 2, max_file_size_mb: 20})}))
 vi.mock('../../server/utils/media-dashboard', () => ({mediaDashboard: mocks.dashboard}))
-const user = {id: 'users:fixture', username: 'fixture', role: 'author' as const}
+const user = {id: 'users:admin', username: 'admin'}
 let server: ReturnType<typeof createServer> | undefined
 beforeEach(() => {
   mocks.auth.mockReset().mockResolvedValue(user)
@@ -46,10 +46,10 @@ describe('media dashboard and tags API boundaries', () => {
     expect(await response.json()).toEqual({tags: [], truncated: false})
     const [, sql, params, options] = mocks.query.mock.calls[0]!
     expect(sql).toContain('AND array::len(tags) > 0 SPLIT tags')
-    expect(sql).toContain("visibility = 'private'")
+    expect(sql).toContain("visibility IN ['public', 'private']")
     expect(sql).toContain("storage_state = 'ready'")
     expect(sql).toContain('LIMIT 201 TIMEOUT 5s')
-    expect(params).toMatchObject({scope_id: 'fixture', scope_name: 'fixture', search: 'nature'})
+    expect(params).toMatchObject({search: 'nature'})
     expect(options).toMatchObject({retry: 'readOnly', timeoutMs: 6000})
   })
   it('preserves tag summary serialization', async () => {

@@ -1,9 +1,9 @@
 import { readBoundedJson } from '../../../../utils/bounded-json'
-import { requireAuthenticatedUser } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { renameTrustedDevice } from '../../../../utils/mfa/trusted-devices'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthenticatedUser(event)
+  const user = await requireOwner(event)
   const body = await readBoundedJson(event, 8 * 1024)
   if (typeof body.id !== 'string' || body.id.length > 128 || typeof body.label !== 'string' || body.label.length > 80) throw createError({statusCode: 400, message: 'Invalid device input'})
   const id = String(body?.id ?? '')

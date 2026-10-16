@@ -1,12 +1,11 @@
 import { queryDb, queryDbRecord, useDb } from '../../../utils/db'
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { firstRow, recordIdPart } from '../../../utils/surrealResult'
-import { assertCanManageOwnedRecord } from '../../../utils/permissions'
 import { assertValidCategoryParent, normalizeCategory, taxonomyName, taxonomyParentId, uniqueTaxonomySlug } from '../../../utils/taxonomy'
 import { stringOrNull } from '../../../utils/content'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  await requireOwner(event)
 
   const id = recordIdPart(getRouterParam(event, 'id') ?? '', 'category')
   const body = await readBody<Record<string, unknown>>(event)
@@ -16,10 +15,6 @@ export default defineEventHandler(async (event) => {
   if (!existing) {
     throw createError({ statusCode: 404, message: 'Category not found' })
   }
-  assertCanManageOwnedRecord(user, existing, {
-    ownerField: 'created_by',
-    message: 'You can only edit categories you created'
-  })
 
   const slug = await uniqueTaxonomySlug(db, 'category', String(body.slug || name), `category:${id}`)
   const description = stringOrNull(body.description)

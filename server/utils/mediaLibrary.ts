@@ -23,7 +23,7 @@ import type { MediaFolderRecord, MediaRecord, MediaVariantRecord, MediaVariantSi
 const MEDIA_FILE_RECORD_COLUMNS = `id, hash, string::slice(original_name, 0, 255) AS original_name, extension, mime_type, size, is_image,
   array::slice(folders, 0, 32) AS folders, array::slice(tags, 0, 32) AS tags, string::slice(comment ?? '', 0, 2000) AS comment, reference_count,
   (array::len(folders) > 32 OR array::len(tags) > 32 OR string::len(original_name) > 255 OR string::len(comment ?? '') > 2000) AS metadata_truncated,
-  visibility, created_by, uploaded_by, uploaded_at, updated_at, storage_state,
+  visibility, uploaded_at, updated_at, storage_state,
   image_meta.width AS width, image_meta.height AS height, {format: image_meta.format} AS image_meta,
   {thumbnail: {path: variants.thumbnail.path, mime_type: variants.thumbnail.mime_type, width: variants.thumbnail.width, height: variants.thumbnail.height, size: variants.thumbnail.size},
    medium: {path: variants.medium.path, mime_type: variants.medium.mime_type, width: variants.medium.width, height: variants.medium.height, size: variants.medium.size},
@@ -32,8 +32,6 @@ export { MEDIA_FILE_RECORD_COLUMNS }
 // Reference arrays, pHash, disk ownership/path receipts and arbitrary EXIF/variant
 // object properties are not list DTO payloads; the authorized detail route owns them.
 export interface MediaCreateUploadInput extends StagedMediaFile {
-  uploadedBy?: string
-  createdBy?: string
   visibility?: 'public' | 'private'
   user?: SessionUser
   signal?: AbortSignal
@@ -42,7 +40,7 @@ export interface MediaSearchOptions {
   page?: number, limit?: number, search?: string, file_name?: string, extension?: string, comment?: string,
   tags?: string[], tag_relation?: 'and' | 'or', filename_regex?: string, filename_regex_case_insensitive?: boolean,
   search_regex?: boolean, case_insensitive?: boolean, sort?: string, type?: string, mime_type?: string,
-  folder?: string, tag?: string, owner?: string, uploaded_from?: string, uploaded_to?: string,
+  folder?: string, tag?: string, uploaded_from?: string, uploaded_to?: string,
   orphan?: boolean, visibility?: string, size_min?: number, size_max?: number, visibleToUser?: SessionUser
 }
 export function mediaNormalizeFileRecord(record: Record<string, unknown>): MediaRecord {
@@ -61,7 +59,6 @@ export function mediaNormalizeFileRecord(record: Record<string, unknown>): Media
     tags: normalizeStringArray(record.tags), comment: stringOrNull(record.comment), reference_count: Number(record.reference_count ?? 0),
     referenced_by: normalizeRecordIdArray(record.referenced_by),
     visibility: record.visibility === 'private' ? 'private' : record.visibility === 'public' ? 'public' : undefined,
-    created_by: record.created_by ? stringifyRecordId(record.created_by) : null, uploaded_by: stringOrNull(record.uploaded_by),
     perceptual_hash: stringOrNull(record.perceptual_hash), created_at: uploadedAt, uploaded_at: uploadedAt,
     updated_at: serializeDate(record.updated_at) ?? uploadedAt,
     metadata_truncated: record.metadata_truncated === true,
@@ -107,16 +104,15 @@ export async function mediaCreateOrReuseFileRecord(db: Surreal, input: MediaCrea
       size: $size, extension: $extension, uploaded_at: $now, updated_at: $now, comment: NONE,
       is_image: $is_image, image_meta: ${optionalParamExpression(image.image_meta, 'image_meta')},
       folders: [], tags: [], reference_count: 0, referenced_by: [], reference_safe: true, visibility: $visibility,
-      created_by: ${input.createdBy ? "type::record('users', $created_by)" : 'NONE'},
       original_path: $original_path, variants: ${optionalParamExpression(image.variants, 'variants')},
       perceptual_hash: ${optionalParamExpression(image.perceptual_hash, 'perceptual_hash')},
-      uploaded_by: ${optionalParamExpression(input.uploadedBy, 'uploaded_by')}, storage_state: 'publishing', storage_claim: $claim
+      storage_state: 'publishing', storage_claim: $claim
     };`, {
       hash, original_name: originalName, stored_name: mediaStoredFilename(hash, extension), mime_type: mimeType,
       size: input.size, extension, now: createdAt, is_image: image.is_image, image_meta: image.image_meta,
-      visibility, created_by: input.createdBy ? recordIdPart(input.createdBy, 'users') : null,
+      visibility,
       original_path: originalPath, variants: image.variants, perceptual_hash: image.perceptual_hash,
-      uploaded_by: input.uploadedBy ?? null, claim
+      claim
     }, {retry: 'never'})
     if (!firstRow(response)) throw new Error('File ownership was not established')
     await mediaPublishStagedFile(input.path, originalPath, false, claim)

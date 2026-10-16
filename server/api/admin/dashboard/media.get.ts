@@ -1,11 +1,11 @@
 import { useDb } from '../../../utils/db'
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { getMediaSettings } from '../../../utils/settings'
 import { mediaDashboard, type MediaDashboardRange } from '../../../utils/media-dashboard'
 
 const presets = new Set(['today', '7d', '30d', '90d', 'all', 'custom'])
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event), query = getQuery(event)
+  const user = await requireOwner(event), query = getQuery(event)
   const range = typeof query.range === 'string' && presets.has(query.range) ? query.range : 'all'
   const window = rangeWindow(range, query.from, query.to)
   const [db, settings] = await Promise.all([useDb(), getMediaSettings()])

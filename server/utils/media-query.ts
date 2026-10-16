@@ -5,14 +5,9 @@ import { queryRows, recordIdPart } from './surrealResult'
 import type { MediaSearchOptions } from './mediaLibrary'
 import { buildFuzzyVariants, clampFtsNeedle, extractVocabularyWords, findFuzzyCandidates, fuzzyLookupWords, type FuzzyCandidate } from './fuzzy'
 
-export function mediaScope(user: MediaSearchOptions['visibleToUser'], manageable = false, readyOnly = true) {
-  const owner = "(created_by = type::record('users', $scope_id) OR uploaded_by = $scope_name)"
-  const params = {scope_id: user ? recordIdPart(user.id, 'users') : '', scope_name: user?.username ?? ''}
-  const policy = user?.role === 'superadmin' ? "visibility IN ['public', 'private']"
-    : !user ? "visibility = 'public'"
-      : manageable && user.role !== 'admin' ? `(${owner} AND visibility IN ['public', 'private'])`
-        : `(visibility = 'public' OR (visibility = 'private' AND ${owner}))`
-  return {where: `(${policy})${readyOnly ? " AND (storage_state = NONE OR storage_state = 'ready')" : ''}`, params}
+export function mediaScope(user: MediaSearchOptions['visibleToUser'], _manageable = false, readyOnly = true) {
+  const policy = user ? "visibility IN ['public', 'private']" : "visibility = 'public'"
+  return {where: `(${policy})${readyOnly ? " AND (storage_state = NONE OR storage_state = 'ready')" : ''}`, params: {} as Record<string, unknown>}
 }
 function bad(message: string): never { throw createError({statusCode: 400, message}) }
 export function mediaInteger(value: unknown, fallback: number, min: number, max: number) {
@@ -65,7 +60,6 @@ export async function mediaFileQuery(db: Surreal, options: MediaSearchOptions) {
   if (!types[type]) bad('Invalid media type')
   conditions.push(`(${types[type]})`)
   if (options.mime_type) conditions.push(`mime_type = ${bind(text(options.mime_type, 120))}`)
-  if (options.owner) conditions.push(`string::lowercase(uploaded_by ?? '') = ${bind(text(options.owner, 120).toLowerCase())}`)
   if (options.folder) {
     const folder = text(options.folder, 120), id = recordIdPart(folder, 'folder')
     const record = await queryDbRecord(db, 'folder', id)

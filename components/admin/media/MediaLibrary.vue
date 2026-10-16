@@ -61,7 +61,6 @@
           <span v-if="filters.extension" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">{{ t('admin.media.filterExt', { value: filters.extension }) }}</span>
           <span v-if="filters.comment" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">{{ t('admin.media.filterComment', { value: filters.comment }) }}</span>
           <span v-if="filters.tags.length" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">{{ t('admin.media.filterTags', { relation: filters.tags.length > 1 ? ` (${selectedTagRelationLabel})` : '', value: filters.tags.join(', ') }) }}</span>
-          <span v-if="filters.owner" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">{{ t('admin.media.filterOwner', { value: filters.owner }) }}</span>
           <span v-if="filters.type && filters.type !== 'all'" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">{{ t('admin.media.filterType', { value: filters.type }) }}</span>
           <span v-if="filters.uploaded_from || filters.uploaded_to" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">{{ t('admin.media.dateRange') }}</span>
           <span v-if="filters.size_min || filters.size_max" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">{{ t('admin.media.filterSize', { value: `${filters.size_min || '0'}–${filters.size_max || '∞'} ${filters.size_unit}` }) }}</span>
@@ -322,7 +321,6 @@ interface MediaFilters {
   tags: string[]
   type: string
   tag: string
-  owner: string
   uploaded_from: string
   uploaded_to: string
   orphan: boolean
@@ -429,7 +427,6 @@ const filters = ref<MediaFilters>({
   tags: [],
   type: 'all',
   tag: '',
-  owner: '',
   uploaded_from: '',
   uploaded_to: '',
   orphan: false,
@@ -446,7 +443,7 @@ const searchPayload = computed(() => filters.value)
 
 const hasActiveFilters = computed(() => {
   const f = filters.value
-  return !!(f.file_name || f.extension || f.comment || f.tags.length || (f.type && f.type !== 'all') || f.uploaded_from || f.uploaded_to || f.size_min || f.size_max || f.orphan || f.owner || f.filename_regex || f.search)
+  return !!(f.file_name || f.extension || f.comment || f.tags.length || (f.type && f.type !== 'all') || f.uploaded_from || f.uploaded_to || f.size_min || f.size_max || f.orphan || f.filename_regex || f.search)
 })
 
 const selectedTagRelationLabel = computed(() => selectedTagRelation.value.toUpperCase())
@@ -551,7 +548,6 @@ async function loadMedia() {
       filename_regex_case_insensitive: filters.value.filename_regex_case_insensitive,
       sort: sortBy.value,
       type: filters.value.type as any,
-      owner: filters.value.owner || undefined,
       uploaded_from: filters.value.uploaded_from,
       uploaded_to: filters.value.uploaded_to,
       size_min: sizeToBytes(filters.value.size_min, filters.value.size_unit),
@@ -622,7 +618,6 @@ function selectAll() {
   filters.value.tags = []
   filters.value.filename_regex = ''
   filters.value.filename_regex_case_insensitive = true
-  filters.value.owner = ''
   page.value = 1
   void loadMedia()
 }
@@ -655,7 +650,6 @@ function selectFolder(id: string) {
   selectedSmartFolder.value = ''
   filters.value.filename_regex = ''
   filters.value.filename_regex_case_insensitive = true
-  filters.value.owner = ''
   filters.value.tag = ''
   filters.value.tags = []
   page.value = 1
@@ -735,7 +729,6 @@ function selectSmartFolderById(id: string) {
     case_insensitive: true,
     filename_regex: sf.filters.filename_regex || '',
     filename_regex_case_insensitive: sf.filters.filename_regex_case_insensitive !== false,
-    owner: '',
     type: sf.filters.file_type || 'all',
     tag: '',
     uploaded_from: sf.filters.date_from || '',
@@ -1240,7 +1233,6 @@ function defaultFilters(): MediaFilters {
     tags: [],
     type: 'all',
     tag: '',
-    owner: '',
     uploaded_from: '',
     uploaded_to: '',
     orphan: false,

@@ -2,7 +2,6 @@ const EXCLUDED_PATH_PREFIXES = [
   '/admin',
   '/api',
   '/login',
-  '/profile',
   '/_nuxt',
   '/__nuxt',
   '/favicon.ico',

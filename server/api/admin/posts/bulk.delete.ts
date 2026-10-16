@@ -1,7 +1,6 @@
-import { requireContentManager } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { queryDbRecord, useDb } from '../../../utils/db'
 import { recordIdPart } from '../../../utils/surrealResult'
-import { assertCanManagePostRecord } from '../../../utils/permissions'
 import { archiveOrDeletePostById } from '../../../utils/postArchiveDelete'
 
 type BulkBody = {
@@ -9,7 +8,7 @@ type BulkBody = {
 }
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  await requireOwner(event)
 
   const body = await readBody<BulkBody>(event)
   const rawIds = Array.isArray(body?.ids) ? body.ids : []
@@ -34,7 +33,6 @@ export default defineEventHandler(async (event) => {
       if (!existing) {
         throw createError({ statusCode: 404, message: 'Post not found' })
       }
-      assertCanManagePostRecord(user, existing)
 
       const result = await archiveOrDeletePostById(db, id)
       if (result.kind === 'archived') {

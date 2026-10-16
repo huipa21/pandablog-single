@@ -18,11 +18,11 @@ vi.mock('../../server/utils/fileStorage', () => ({
 }))
 vi.mock('../../server/utils/imageProcessor', () => ({mediaProcessImageFile: vi.fn()}))
 vi.mock('../../server/utils/imageHash', () => ({isSimilar: vi.fn()}))
-const hash = 'a'.repeat(64), owner = {id: 'users:owner', username: 'owner', role: 'author' as const}
+const hash = 'a'.repeat(64), owner = {id: 'users:admin', username: 'admin'}
 const raw = (overrides: Record<string, unknown> = {}) => ({
   id: `files:${hash}`, hash, original_name: 'photo.jpg', stored_name: `${hash}.jpg`, extension: 'jpg',
   mime_type: 'image/jpeg', size: 1024, original_path: `2024/01/${hash}.jpg`, visibility: 'public',
-  created_by: 'users:owner', uploaded_by: 'owner', variants: {thumbnail: {path: `thumbnail/2024/01/${hash}.webp`, mime_type: 'image/webp', width: 360, height: 360, size: 1000}},
+  variants: {thumbnail: {path: `thumbnail/2024/01/${hash}.webp`, mime_type: 'image/webp', width: 360, height: 360, size: 1000}},
   is_image: true, image_meta: {width: 800, height: 600}, folders: [], tags: ['nature', 'nature', 'travel'],
   comment: 'A nice photo', reference_count: 2, referenced_by: [], perceptual_hash: '0'.repeat(64),
   uploaded_at: '2024-01-15T10:00:00.000Z', updated_at: '2024-01-15T11:00:00.000Z', ...overrides
@@ -44,12 +44,11 @@ describe('media DTOs and identifiers', () => {
     expect(mediaNormalizeHash(hash.toUpperCase())).toBe(hash)
     for (const input of ['short', 'z'.repeat(64)]) expect(() => mediaNormalizeHash(input)).toThrow()
   })
-  it('fails closed for missing policy or non-ready state and retains private owner rules', () => {
+  it('fails closed for missing policy or non-ready state and keeps private media owner-only', () => {
     const file = mediaNormalizeFileRecord(raw({visibility: 'private'}))
     expect(mediaRecordVisibleToUser(file, owner)).toBe(true)
-    expect(mediaRecordVisibleToUser(file, {...owner, id: 'users:other', username: 'other'})).toBe(false)
-    expect(mediaRecordManageableByUser(file, {...owner, role: 'superadmin'})).toBe(true)
-    expect(mediaRecordManageableByUser(file, {...owner, role: 'admin', id: 'users:other', username: 'other'})).toBe(false)
+    expect(mediaRecordVisibleToUser(file, null)).toBe(false)
+    expect(mediaRecordManageableByUser(file, owner)).toBe(true)
     for (const overrides of [{visibility: undefined}, {storage_state: 'publishing'}, {storage_state: 'deleting'}]) expect(mediaRecordVisibleToUser(mediaNormalizeFileRecord(raw(overrides)), owner)).toBe(false)
   })
 })
@@ -61,16 +60,16 @@ describe('bounded SQL media queries', () => {
     const [_, sql, params] = vi.mocked(queryDb).mock.calls[0]!
     expect(sql).toContain('ORDER BY uploaded_at DESC, id ASC LIMIT $limit START $offset')
     expect(sql).toContain('SELECT count() AS total'); expect(sql).toContain('TIMEOUT 5s')
-    expect(sql).toContain("visibility = 'private'"); expect(params).toMatchObject({limit: 24, offset: 24, scope_id: 'owner'})
+    expect(sql).toContain("visibility IN ['public', 'private']"); expect(params).toMatchObject({limit: 24, offset: 24})
   })
   it('binds all supported filters before pagination', async () => {
     vi.mocked(queryDbRecord).mockResolvedValue({slug: 'default'})
-    const query = await mediaFileQuery({} as never, {file_name: 'REPORT', extension: '.PDF', comment: 'FINAL', tags: ['work', 'review'], folder: 'folder:default', owner: 'OWNER', type: 'document', mime_type: 'application/pdf', uploaded_from: '2024-01-01', uploaded_to: '2024-12-31', orphan: true, size_min: 10, size_max: 1000, visibility: 'public', sort: 'name_asc'})
+    const query = await mediaFileQuery({} as never, {file_name: 'REPORT', extension: '.PDF', comment: 'FINAL', tags: ['work', 'review'], folder: 'folder:default', type: 'document', mime_type: 'application/pdf', uploaded_from: '2024-01-01', uploaded_to: '2024-12-31', orphan: true, size_min: 10, size_max: 1000, visibility: 'public', sort: 'name_asc'})
     expect(query.where).toContain('string::contains(string::lowercase(original_name')
     expect(query.where).toContain('array::map(tags'); expect(query.where).toContain('folders = []')
     expect(query.where).toContain('reference_count = 0 AND referenced_by = []')
     expect(query.order).toBe('original_name ASC, id ASC')
-    expect(Object.values(query.params)).toEqual(expect.arrayContaining(['report', 'pdf', 'final', 'work', 'review', 'owner', 10, 1000]))
+    expect(Object.values(query.params)).toEqual(expect.arrayContaining(['report', 'pdf', 'final', 'work', 'review', 10, 1000]))
   })
   it.each(['image', 'video', 'audio', 'document', 'archive', 'other'])('supports %s type and every sort allowlist entry', async type => {
     for (const sort of ['uploaded_at_asc', 'uploaded_at_desc', 'name_asc', 'name_desc', 'size_asc', 'size_desc']) expect((await mediaFileQuery({} as never, {type, sort})).order).toContain('id ASC')
@@ -112,7 +111,7 @@ describe('reference source extraction', () => {
   })
 })
 describe('publication ownership and privacy', () => {
-  const input = {path: '/owned/file', hash, size: 3, originalName: 'doc.txt', mimeType: 'text/plain', user: owner, createdBy: owner.id}
+  const input = {path: '/owned/file', hash, size: 3, originalName: 'doc.txt', mimeType: 'text/plain', user: owner}
   const settings = {allowed_extensions: ['txt'], max_file_size_mb: 10, enable_perceptual_dedup: false} as MediaSettings
   it('uses NONE fields and obtains CREATE ownership before touching shared paths', async () => {
     vi.mocked(queryDbRecord).mockResolvedValue(null)
@@ -130,11 +129,11 @@ describe('publication ownership and privacy', () => {
     await expect(mediaCreateOrReuseFileRecord({} as never, input, settings)).rejects.toThrow(/conflict/)
     expect(mediaDeleteStoredObjects).not.toHaveBeenCalled(); expect(mediaPublishStagedFile).not.toHaveBeenCalled()
   })
-  it('dedup does not invent references or disclose another owner private record', async () => {
+  it('dedup does not invent references or reuse a record across visibility', async () => {
     vi.mocked(queryDbRecord).mockResolvedValue(raw())
     expect((await mediaCreateOrReuseFileRecord({} as never, input, settings)).status).toBe('duplicate')
     expect(queryDb).not.toHaveBeenCalled()
-    vi.mocked(queryDbRecord).mockResolvedValue(raw({visibility: 'private', created_by: 'users:other', uploaded_by: 'other'}))
+    vi.mocked(queryDbRecord).mockResolvedValue(raw({visibility: 'private'}))
     expect(await mediaCreateOrReuseFileRecord({} as never, input, settings)).toMatchObject({status: 'rejected'})
     expect(mediaProcessImageFile).not.toHaveBeenCalled()
   })

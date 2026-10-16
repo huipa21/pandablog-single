@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:http'
 import { once } from 'node:events'
 import { createApp, createError, defineEventHandler, readBody, setResponseStatus, toNodeListener } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({requireSuperadmin: vi.fn(), startBackupJob: vi.fn()}))
+const mocks = vi.hoisted(() => ({requireOwner: vi.fn(), startBackupJob: vi.fn()}))
 vi.mock('../../../server/utils/auth', () => mocks)
 vi.mock('../../../server/utils/backups/create', () => mocks)
 let server: Server, origin: string
@@ -27,7 +27,7 @@ describe('full-only create API on real H3 routing (mocked current authorization/
     expect(mocks.startBackupJob).not.toHaveBeenCalled()
   })
   it('authorization failure never starts a job', async () => {
-    mocks.requireSuperadmin.mockRejectedValue(createError({statusCode: 403}))
+    mocks.requireOwner.mockRejectedValue(createError({statusCode: 403}))
     expect((await post({})).status).toBe(403); expect(mocks.startBackupJob).not.toHaveBeenCalled()
   })
 })

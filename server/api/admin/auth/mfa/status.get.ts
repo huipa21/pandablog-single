@@ -1,9 +1,9 @@
-import { requireUser } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { getUserMfaState } from '../../../../utils/mfa/store'
 
 // Report the current user's MFA status for the settings UI.
 export default defineEventHandler(async (event) => {
-  const sessionUser = await requireUser(event)
+  const sessionUser = await requireOwner(event)
   const state = await getUserMfaState(sessionUser.id)
 
   return {

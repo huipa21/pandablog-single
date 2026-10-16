@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
     action: 'auth.setup',
     resource_type: 'session',
     resource_id: user.id,
-    metadata: { username: user.username, role: user.role },
+    metadata: { username: user.username },
     description: 'Admin account setup completed'
   })
 

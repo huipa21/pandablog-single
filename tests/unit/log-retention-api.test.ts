@@ -2,8 +2,8 @@ import type { H3Event } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RetentionReport } from '../../types/logging'
 
-const mocks = vi.hoisted(() => ({ requireSuperadmin: vi.fn(), getLastRetentionReport: vi.fn(), runLogRetention: vi.fn() }))
-vi.mock('../../server/utils/auth', () => ({ requireSuperadmin: mocks.requireSuperadmin }))
+const mocks = vi.hoisted(() => ({ requireOwner: vi.fn(), getLastRetentionReport: vi.fn(), runLogRetention: vi.fn() }))
+vi.mock('../../server/utils/auth', () => ({ requireOwner: mocks.requireOwner }))
 vi.mock('../../server/utils/log-retention', () => ({ ...mocks, LOG_RETENTION_SCHEDULE: '17 3 * * *' }))
 const event = {} as H3Event
 const report: RetentionReport = {
@@ -15,7 +15,7 @@ beforeEach(() => {
   vi.resetModules()
   vi.resetAllMocks()
   vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
-  mocks.requireSuperadmin.mockResolvedValue({ role: 'superadmin' })
+  mocks.requireOwner.mockResolvedValue({ id: 'users:admin', username: 'admin' })
 })
 afterEach(() => { vi.unstubAllGlobals() })
 
@@ -24,8 +24,8 @@ describe('retention admin endpoints', () => {
     mocks.getLastRetentionReport.mockReturnValue(report)
     const { default: get } = await import('../../server/api/admin/logs/retention.get')
     expect(await get(event)).toEqual({ last: report, schedule: '17 3 * * *' })
-    expect(mocks.requireSuperadmin).toHaveBeenCalledExactlyOnceWith(event)
-    expect(mocks.requireSuperadmin.mock.invocationCallOrder[0]).toBeLessThan(mocks.getLastRetentionReport.mock.invocationCallOrder[0]!)
+    expect(mocks.requireOwner).toHaveBeenCalledExactlyOnceWith(event)
+    expect(mocks.requireOwner.mock.invocationCallOrder[0]).toBeLessThan(mocks.getLastRetentionReport.mock.invocationCallOrder[0]!)
     expect(mocks.runLogRetention).not.toHaveBeenCalled()
   })
 
@@ -39,8 +39,8 @@ describe('retention admin endpoints', () => {
     mocks.runLogRetention.mockResolvedValue(report)
     const { default: post } = await import('../../server/api/admin/logs/retention/run.post')
     expect(await post(event)).toBe(report)
-    expect(mocks.requireSuperadmin).toHaveBeenCalledExactlyOnceWith(event)
-    expect(mocks.requireSuperadmin.mock.invocationCallOrder[0]).toBeLessThan(mocks.runLogRetention.mock.invocationCallOrder[0]!)
+    expect(mocks.requireOwner).toHaveBeenCalledExactlyOnceWith(event)
+    expect(mocks.requireOwner.mock.invocationCallOrder[0]).toBeLessThan(mocks.runLogRetention.mock.invocationCallOrder[0]!)
     expect(mocks.runLogRetention).toHaveBeenCalledExactlyOnceWith()
   })
 
@@ -52,7 +52,7 @@ describe('retention admin endpoints', () => {
   })
 
   it('denies both endpoints without exposing the last report or running deletions', async () => {
-    mocks.requireSuperadmin.mockRejectedValue(new Error('Insufficient permissions'))
+    mocks.requireOwner.mockRejectedValue(new Error('Insufficient permissions'))
     const { default: get } = await import('../../server/api/admin/logs/retention.get')
     const { default: post } = await import('../../server/api/admin/logs/retention/run.post')
     await expect(get(event)).rejects.toThrow('Insufficient permissions')

@@ -1,10 +1,10 @@
-import { requireSuperadmin } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { invalidatePublicBootstrapCache } from '../../utils/publicBootstrap'
 import { writeAppSettings } from '../../utils/settings'
 import { normalizeThemeMode, PUBLIC_THEME_MODE_KEY } from '~/utils/themeMode'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   const body = await readBody<{ mode?: unknown }>(event)
   const mode = normalizeThemeMode(body?.mode)

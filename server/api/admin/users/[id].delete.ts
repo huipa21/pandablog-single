@@ -1,11 +1,11 @@
-import { requireAdminTier } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { queryDb, useDb } from '../../../utils/db'
 import { firstRow, recordIdPart } from '../../../utils/surrealResult'
 import { assertCanManageTargetUser, assertNotSelf } from '../../../utils/user-management'
 import { deleteUser, findUserById } from '../../../utils/users'
 
 export default defineEventHandler(async (event) => {
-  const actor = await requireAdminTier(event)
+  const actor = await requireOwner(event)
   const target = await findUserById(getRouterParam(event, 'id') ?? '')
   if (!target) {
     throw createError({ statusCode: 404, message: 'User not found' })

@@ -4,8 +4,8 @@ import type { AddressInfo } from 'node:net'
 import { createApp, createRouter, createError, defineEventHandler, getQuery, getRouterParam, getRouterParams, readBody, toNodeListener } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bulkErrorGroupsSchema, errorFingerprintSchema, errorGroupListSchema } from '../../server/utils/error-groups'
-const mocks = vi.hoisted(() => ({ requireSuperadmin: vi.fn(), listErrorGroups: vi.fn(), readErrorGroup: vi.fn(), bulkErrorGroups: vi.fn(), readLogById: vi.fn() }))
-vi.mock('../../server/utils/auth', () => ({ requireSuperadmin: mocks.requireSuperadmin }))
+const mocks = vi.hoisted(() => ({ requireOwner: vi.fn(), listErrorGroups: vi.fn(), readErrorGroup: vi.fn(), bulkErrorGroups: vi.fn(), readLogById: vi.fn() }))
+vi.mock('../../server/utils/auth', () => ({ requireOwner: mocks.requireOwner }))
 vi.mock('../../server/utils/logging', () => ({ readLogById: mocks.readLogById }))
 vi.mock('../../server/utils/db', () => ({ queryDb: vi.fn(), useDb: vi.fn() }))
 vi.mock('../../server/utils/error-groups', async importOriginal => ({ ...await importOriginal<typeof import('../../server/utils/error-groups')>(), ...mocks }))
@@ -16,7 +16,7 @@ beforeEach(async () => {
   vi.clearAllMocks()
   for (const [name, value] of Object.entries({ createError, defineEventHandler, getQuery, getRouterParam, getRouterParams, readBody })) vi.stubGlobal(name, value)
   vi.stubGlobal('useRuntimeConfig', () => ({ public: {} }))
-  mocks.requireSuperadmin.mockResolvedValue({ role: 'superadmin' })
+  mocks.requireOwner.mockResolvedValue({ id: 'users:admin', username: 'admin' })
   mocks.listErrorGroups.mockResolvedValue({ rows: [{ fingerprint: fp }], total: 1 })
   mocks.readErrorGroup.mockResolvedValue({ group: { fingerprint: fp }, occurrences: [] })
   mocks.bulkErrorGroups.mockResolvedValue({ ok: true, updated: 1 })
@@ -48,7 +48,7 @@ describe('error groups real H3 routing with mocked auth/storage', () => {
     expect(mocks.readErrorGroup).toHaveBeenCalledWith(fp)
     expect((await bulk({ action: 'resolve', ids: [fp] })).status).toBe(200)
     expect(mocks.bulkErrorGroups).toHaveBeenCalledWith(bulkErrorGroupsSchema.parse({ action: 'resolve', ids: [fp] }))
-    expect(mocks.requireSuperadmin).toHaveBeenCalledTimes(3)
+    expect(mocks.requireOwner).toHaveBeenCalledTimes(3)
     expect(errorFingerprintSchema.safeParse(fp).success).toBe(true)
   })
   it('keeps occurrence detail working despite the static errors list parent', async () => {
@@ -66,7 +66,7 @@ describe('error groups real H3 routing with mocked auth/storage', () => {
     expect(mocks.bulkErrorGroups).not.toHaveBeenCalled()
   })
   it.each([401, 403])('denies unauthenticated/non-superadmin access (%s) before validation', async statusCode => {
-    mocks.requireSuperadmin.mockRejectedValue(createError({ statusCode, message: 'Denied' }))
+    mocks.requireOwner.mockRejectedValue(createError({ statusCode, message: 'Denied' }))
     expect((await fetch(`${base}/api/admin/logs/error-groups`)).status).toBe(statusCode)
     expect((await fetch(`${base}/api/admin/logs/error-groups/${fp}`)).status).toBe(statusCode)
     expect((await bulk({ action: 'delete', ids: [fp] })).status).toBe(statusCode)

@@ -1,6 +1,6 @@
 export type GraphNodeType = 'post' | 'category' | 'tag'
 export type GraphEdgeType = 'link' | 'categorized' | 'tagged' | 'cooccurs'
-export type GraphViewerScope = 'anonymous' | 'user' | 'superadmin'
+export type GraphViewerScope = 'anonymous' | 'owner'
 export type GraphPostVisibility = 'public' | 'private'
 
 export interface GraphPostNode {

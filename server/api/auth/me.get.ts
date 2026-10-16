@@ -1,8 +1,8 @@
-import { requireAuthenticatedUser } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 import { findUserById } from '../../utils/users'
 
 export default defineEventHandler(async (event) => {
-  const sessionUser = await requireAuthenticatedUser(event)
+  const sessionUser = await requireOwner(event)
   const user = await findUserById(sessionUser.id)
 
   if (!user || !user.active) {

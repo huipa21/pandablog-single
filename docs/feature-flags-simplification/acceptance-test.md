@@ -19,7 +19,7 @@
 |---|---|---|
 | B1 | The error hook, error-group flush, log retention, logger and admin log APIs no longer consult module flags. Runtime logging settings (`enabled`, `activity_log_enabled`, `error_log_enabled`) still gate behavior | Updated logging unit tests pass, including the existing runtime-setting cases |
 | B2 | Analytics rollup is always registered. `analytics_enabled=false` still stops collection (except post view counts, as today). GeoIP returns empty geo when the file is missing | Existing analytics tests pass; geo unit behavior unchanged |
-| B3 | No single-user code remains. Active multi-user role checks are unchanged (viewer redirects, superadmin-only settings/logs/analytics, admin+ users page) | `current-identity*.test.ts`, `password-routes.test.ts`; middleware source check |
+| B3 | **Superseded by the single-owner simplification:** only `users:admin` can hold a session; no role checks or user management remain | `current-identity*.test.ts`, `password-routes.test.ts`; middleware source check |
 | B4 | The MFA login challenge, enrollment enforcement and device APIs are always active and still require authentication | Existing MFA/login tests pass; device APIs no longer 404 |
 | B5 | Security alerts are gated only by `security_alerts_enabled` and the webhook URL | `security-alerts-bounded.test.ts` |
 | B6 | `loadSchema()` returns the raw `schema.surql` and the hash equals `sha256(raw)`. `schema.surql` is unchanged (`git diff --quiet -- server/utils/schema.surql`) | `schema.test.ts` + git |

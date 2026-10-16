@@ -7,12 +7,12 @@ import { createApp, createError, createRouter, defineEventHandler, getQuery, get
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  useDb: vi.fn(), queryDb: vi.fn(), getSiteVisibility: vi.fn(), isAuthenticated: vi.fn(), getActiveJob: vi.fn(),
+  useDb: vi.fn(), queryDb: vi.fn(), getSiteVisibility: vi.fn(), isOwner: vi.fn(), getActiveJob: vi.fn(),
   getRuntimeFlags: vi.fn()
 }))
 vi.mock('../../server/utils/db', () => mocks)
 vi.mock('../../server/utils/visibility', () => ({ getSiteVisibility: mocks.getSiteVisibility }))
-vi.mock('../../server/utils/auth', () => ({ isAuthenticated: mocks.isAuthenticated }))
+vi.mock('../../server/utils/auth', () => ({ isOwner: mocks.isOwner }))
 vi.mock('../../server/utils/backups/jobMutex', () => ({ getActiveJob: mocks.getActiveJob }))
 vi.mock('../../server/utils/maintenance', () => ({writeBarrier: {status: () => ({closed: Boolean(mocks.getActiveJob())})}}))
 vi.mock('../../server/utils/settings', () => ({ getRuntimeFlags: mocks.getRuntimeFlags }))
@@ -30,7 +30,7 @@ beforeEach(async () => {
     vi.stubGlobal(key, value)
   }
   mocks.getSiteVisibility.mockResolvedValue('private')
-  mocks.isAuthenticated.mockResolvedValue(false)
+  mocks.isOwner.mockResolvedValue(false)
   mocks.getActiveJob.mockReturnValue({ kind: 'restore' })
   mocks.useDb.mockRejectedValue(new Error('DB unavailable'))
   mocks.getRuntimeFlags.mockReturnValue({ trust_proxy_headers: false })
@@ -77,7 +77,7 @@ describe('health HTTP/middleware integration', () => {
     expect(mocks.useDb).not.toHaveBeenCalled()
     expect(mocks.queryDb).not.toHaveBeenCalled()
     expect(mocks.getSiteVisibility).not.toHaveBeenCalled()
-    expect(mocks.isAuthenticated).not.toHaveBeenCalled()
+    expect(mocks.isOwner).not.toHaveBeenCalled()
   })
 
   it('returns no-store 503 for an explicitly requested failing DB check, also without access logs', async () => {
@@ -86,7 +86,7 @@ describe('health HTTP/middleware integration', () => {
     expect(response.headers.get('cache-control')).toBe('no-store')
     expect(await response.json()).toEqual({ ok: false, db: 'down' })
     expect(mocks.useDb).not.toHaveBeenCalled() // fenced diagnostics never allocate
-    expect(mocks.isAuthenticated).not.toHaveBeenCalled()
+    expect(mocks.isOwner).not.toHaveBeenCalled()
   })
 
   it('does not bypass the maintenance fence for similarly named unrelated routes', async () => {
@@ -102,7 +102,7 @@ describe('health HTTP/middleware integration', () => {
     expect(response.status).toBe(401)
     await response.text()
     expect(mocks.getSiteVisibility).toHaveBeenCalledTimes(1)
-    expect(mocks.isAuthenticated).toHaveBeenCalledTimes(1)
+    expect(mocks.isOwner).toHaveBeenCalledTimes(1)
   })
 })
 

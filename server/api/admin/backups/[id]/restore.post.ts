@@ -1,6 +1,6 @@
 import { readBoundedJson } from '../../../../utils/bounded-json'
 import { z } from 'zod'
-import { requireSuperadmin } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { startRestoreJob } from '../../../../utils/backups/restore'
 
 const bodySchema = z.object({
@@ -9,7 +9,7 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const id = getRouterParam(event, 'id') ?? ''
   const body = await readBoundedJson(event, 8 * 1024)
   const parsed = bodySchema.safeParse(body)

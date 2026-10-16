@@ -8,10 +8,6 @@ import { getUserMfaState } from '../../utils/mfa/store'
 import { findMatchingTrustedDevice, refreshTrustedDevice, resolveTrustedDeviceContext, trustedDeviceContextMatches } from '../../utils/mfa/trusted-devices'
 import { getSecuritySettings, getRuntimeFlags, isSetupCompleted } from '../../utils/settings'
 import { findUserByUsername, toSessionUser, touchUserLogin, verifyUserPassword } from '../../utils/users'
-import type { UserRole } from '../../utils/users'
-
-// Roles for which the `mfa_required_for_admins` enforcement applies.
-const MFA_ENFORCED_ROLES: readonly UserRole[] = ['superadmin', 'admin']
 
 
 export default defineEventHandler(async (event) => {
@@ -104,12 +100,12 @@ export default defineEventHandler(async (event) => {
           action: 'auth.login',
           resource_type: 'session',
           resource_id: user.id,
-          metadata: { username: user.username, role: user.role, mfa: true, trusted_device: true },
+          metadata: { username: user.username, mfa: true, trusted_device: true },
           description: 'User signed in'
         })
         dispatchSecurityAlert('login.success', alertDetailsFromEvent(event, {
           username: user.username,
-          reason: `Role: ${user.role} (MFA trusted device)`
+          reason: 'MFA trusted device'
         }))
 
         return { user }
@@ -121,7 +117,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const security = getSecuritySettings()
-  if (security.security_mfa_required_for_admins && MFA_ENFORCED_ROLES.includes(user.role)) {
+  if (security.security_mfa_required_for_admins) {
     await setMfaPending(event, user.id, 'enroll', account!.auth_epoch)
     return { mfa_enrollment_required: true }
   }
@@ -137,12 +133,12 @@ export default defineEventHandler(async (event) => {
     action: 'auth.login',
     resource_type: 'session',
     resource_id: user.id,
-    metadata: { username: user.username, role: user.role },
+    metadata: { username: user.username },
     description: 'User signed in'
   })
   dispatchSecurityAlert('login.success', alertDetailsFromEvent(event, {
     username: user.username,
-    reason: `Role: ${user.role}`
+    reason: 'Password'
   }))
 
   return { user }

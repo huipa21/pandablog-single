@@ -1,4 +1,4 @@
-import { requireAdminTier } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 
 /**
  * Build identity for the admin UI.
@@ -8,7 +8,7 @@ import { requireAdminTier } from '../../../utils/auth'
  * inside the container via `panda version`.
  */
 export default defineEventHandler(async (event) => {
-  await requireAdminTier(event)
+  await requireOwner(event)
 
   const version = useRuntimeConfig(event).appVersion || ''
   const current = /^(\d{8})T\d{6}Z-g([0-9a-f]{12})(?:\.dirty)?$/.exec(version)

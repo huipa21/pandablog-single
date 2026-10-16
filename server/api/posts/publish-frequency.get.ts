@@ -1,6 +1,6 @@
 import { queryDb, useDb } from '../../utils/db'
 import { queryRows } from '../../utils/surrealResult'
-import { isAdminAuthenticated } from '../../utils/auth'
+import { isOwner } from '../../utils/auth'
 import { assertPublicFeatureEnabled } from '../../utils/publicFeatures'
 
 interface PublishFrequencyEntry {
@@ -16,7 +16,7 @@ interface PublishFrequencyResponse {
 export default defineEventHandler(async (event): Promise<PublishFrequencyResponse> => {
   await assertPublicFeatureEnabled('publish_heatmap_enabled')
 
-  const isAdmin = await isAdminAuthenticated(event)
+  const isAdmin = await isOwner(event)
   const visibilityFilter = isAdmin
     ? ''
     : 'AND (visibility IN ["public", "password"] OR visibility IS NONE)'

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { getBackupSettings, updateBackupSettings } from '../../../utils/settings'
 
 const bodySchema = z.object({
@@ -9,7 +9,7 @@ const bodySchema = z.object({
 }).strict()
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const body = await readBody<unknown>(event)
   const parsed = bodySchema.safeParse(body)
 

@@ -1,9 +1,9 @@
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { invalidatePublicBootstrapCache } from '../../../utils/publicBootstrap'
 import { setActiveThemeId, loadTheme, invalidateThemeCache } from '../../../utils/theme-loader'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   const body = await readBody<{ themeId?: string }>(event)
   const themeId = body.themeId?.trim()

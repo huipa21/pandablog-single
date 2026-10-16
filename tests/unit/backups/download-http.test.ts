@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sendBackupFile } from '../../../server/utils/backups/download'
 import { acquireSnapshotRead, snapshotHasReaders, reserveSnapshotDeletion } from '../../../server/utils/backups/snapshotReads'
 
-const mocks = vi.hoisted(() => ({requireSuperadmin: vi.fn(), getBackup: vi.fn(), ensureBundle: vi.fn()}))
+const mocks = vi.hoisted(() => ({requireOwner: vi.fn(), getBackup: vi.fn(), ensureBundle: vi.fn()}))
 vi.mock('../../../server/utils/auth', () => mocks)
 vi.mock('../../../server/utils/backups/registry', () => ({getBackup: mocks.getBackup, backupIdPart: (id: string) => id.replace(/^backups:/, '')}))
 vi.mock('../../../server/utils/backups/package', () => mocks)
@@ -55,7 +55,7 @@ describe('unified download through real H3/HTTP and filesystem streams', () => {
     await response.body?.cancel()
   })
   it('auth precedes snapshot access; retired consolidation parameters fail explicitly', async () => {
-    mocks.requireSuperadmin.mockRejectedValueOnce(createError({statusCode: 403}))
+    mocks.requireOwner.mockRejectedValueOnce(createError({statusCode: 403}))
     expect((await fetch(`${origin}/api/admin/backups/fixture/download`)).status).toBe(403)
     expect(mocks.getBackup).not.toHaveBeenCalled()
     expect((await fetch(`${origin}/api/admin/backups/fixture/download?consolidate=0`)).status).toBe(400)

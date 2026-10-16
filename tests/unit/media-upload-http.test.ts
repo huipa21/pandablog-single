@@ -6,7 +6,7 @@ import { createApp, createError, defineEventHandler, toNodeListener } from 'h3'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mediaUploadBudget } from '../../server/utils/media-upload'
 const mocks = vi.hoisted(() => ({auth: vi.fn(), publish: vi.fn()}))
-vi.mock('../../server/utils/auth', () => ({requireContentManager: mocks.auth}))
+vi.mock('../../server/utils/auth', () => ({requireOwner: mocks.auth}))
 vi.mock('../../server/utils/db', () => ({useDb: async () => ({})}))
 vi.mock('../../server/utils/settings', () => ({getMediaSettings: async () => ({max_files_per_upload: 2.5, max_file_size_mb: 64.5 / 1024 / 1024})}))
 vi.mock('../../server/utils/mediaLibrary', () => ({mediaCreateOrReuseFileRecord: mocks.publish}))
@@ -19,7 +19,7 @@ afterEach(async () => {
 async function setup(admin = false) {
   vi.stubGlobal('defineEventHandler', defineEventHandler); vi.stubGlobal('createError', createError)
   root = await mkdtemp(join(tmpdir(), 'pb-media-http-')); cwd = vi.spyOn(process, 'cwd').mockReturnValue(root)
-  mocks.auth.mockReset().mockResolvedValue({id: 'users:fixture', username: 'fixture', role: 'author'})
+  mocks.auth.mockReset().mockResolvedValue({id: 'users:admin', username: 'admin'})
   mocks.publish.mockReset().mockImplementation(async (_db, file) => ({status: 'created', record: {hash: file.hash, original_name: file.originalName}}))
   const handler = admin ? (await import('../../server/api/admin/upload.post')).default : (await import('../../server/api/media/upload.post')).default
   const app = createApp(); app.use('/upload', handler); server = createServer(toNodeListener(app))

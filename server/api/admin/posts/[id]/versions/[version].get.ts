@@ -1,11 +1,10 @@
 import { queryDbRecord, useDb } from '../../../../../utils/db'
 import { buildDocFromBlocks, loadBlocksForVersion, loadVersionsForPost } from '../../../../../utils/blocks'
 import { recordIdPart } from '../../../../../utils/surrealResult'
-import { requireContentManager } from '../../../../../utils/auth'
-import { assertCanManagePostRecord } from '../../../../../utils/permissions'
+import { requireOwner } from '../../../../../utils/auth'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  await requireOwner(event)
   const id = recordIdPart(getRouterParam(event, 'id') ?? '', 'post')
   const version = String(getRouterParam(event, 'version') ?? '').trim()
   if (!version) {
@@ -17,7 +16,6 @@ export default defineEventHandler(async (event) => {
   if (!post) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
-  assertCanManagePostRecord(user, post)
 
   const [blocks, versions] = await Promise.all([
     loadBlocksForVersion(db, `post:${id}`, version),

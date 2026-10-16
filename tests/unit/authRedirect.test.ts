@@ -17,27 +17,17 @@ describe('safeInternalPath', () => {
 })
 
 describe('resolveLoginRedirect', () => {
-  it('sends admin-capable users to the dashboard when no redirect is supplied', () => {
-    expect(resolveLoginRedirect('superadmin', undefined)).toBe('/admin/dashboard')
-    expect(resolveLoginRedirect('admin', undefined)).toBe('/admin/dashboard')
-    expect(resolveLoginRedirect('author', undefined)).toBe('/admin/dashboard')
+  it('sends the owner to the dashboard when no redirect is supplied', () => {
+    expect(resolveLoginRedirect(undefined)).toBe('/admin/dashboard')
   })
 
-  it('sends viewers to the public homepage when no redirect is supplied', () => {
-    expect(resolveLoginRedirect('viewer', undefined)).toBe('/')
-  })
-
-  it('preserves safe redirects for admin-capable users', () => {
-    expect(resolveLoginRedirect('admin', '/admin/posts')).toBe('/admin/posts')
-    expect(resolveLoginRedirect('author', '/profile')).toBe('/profile')
-  })
-
-  it('keeps viewers out of admin redirects', () => {
-    expect(resolveLoginRedirect('viewer', '/admin/dashboard')).toBe('/')
+  it('preserves safe redirects', () => {
+    expect(resolveLoginRedirect('/admin/posts')).toBe('/admin/posts')
+    expect(resolveLoginRedirect('/blog/hello')).toBe('/blog/hello')
   })
 
   it('falls back safely for unsafe redirects', () => {
-    expect(resolveLoginRedirect('admin', 'https://example.test')).toBe('/admin/dashboard')
-    expect(resolveLoginRedirect('viewer', '//example.test')).toBe('/')
+    expect(resolveLoginRedirect('https://example.test')).toBe('/admin/dashboard')
+    expect(resolveLoginRedirect('//example.test')).toBe('/admin/dashboard')
   })
 })

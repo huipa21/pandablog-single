@@ -1,6 +1,6 @@
 import { queryDb, queryDbRecord, useDb } from '../../../../utils/db'
 import { firstRow, recordIdPart } from '../../../../utils/surrealResult'
-import { requireContentManager } from '../../../../utils/auth'
+import { requireOwner } from '../../../../utils/auth'
 import { assertCanManagePostRecord } from '../../../../utils/permissions'
 
 const LOCK_STALE_MS = 90_000
@@ -12,7 +12,7 @@ interface LockRow {
 }
 
 export default defineEventHandler(async (event) => {
-  const user = await requireContentManager(event)
+  const user = await requireOwner(event)
   const id = recordIdPart(getRouterParam(event, 'id') ?? '', 'post')
   if (!id) {
     throw createError({ statusCode: 400, message: 'Invalid post id' })

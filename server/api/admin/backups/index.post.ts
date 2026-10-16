@@ -1,9 +1,9 @@
 import { createBackupSchema } from '../../../utils/backups/contracts'
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { startBackupJob } from '../../../utils/backups/create'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const body = await readBody<unknown>(event)
   const parsed = createBackupSchema.safeParse(body)
 

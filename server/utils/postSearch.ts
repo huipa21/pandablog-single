@@ -1,10 +1,8 @@
 import type { Surreal } from 'surrealdb'
 import { queryDb } from './db'
 import { queryRows, stringifyRecordId } from './surrealResult'
-import { isOwnedByUser } from './permissions'
 import type { SessionUser } from './users'
 import { expandFuzzyNeedles } from './searchTerms'
-import { resolveSearchAuthors } from './searchAuthors'
 import { clampFtsNeedle, createPhraseMatcher, fuzzyPenalty } from './fuzzy'
 import {
   collectSearchTerms,
@@ -26,7 +24,7 @@ import type {
 
 /**
  * Public post search: keyword expression (exact full-text + typo-tolerant
- * fallback), taxonomy / author / date filters and session-aware access rules.
+ * fallback), taxonomy / date filters and session-aware access rules.
  *
  * Ranking: every post whose keyword expression is satisfied by exact matches
  * ranks above every post that needs a fuzzy (typo-corrected) match. Within a
@@ -61,7 +59,7 @@ const TITLE_WEIGHT = 10
 const SUMMARY_WEIGHT = 3
 const BLOCK_WEIGHT = 1
 
-const POST_FIELDS = 'id, slug, title, summary, cover_image, published_at, updated_at, status, visibility, author, author_username, view_count, word_count, cjk_char_count'
+const POST_FIELDS = 'id, slug, title, summary, cover_image, published_at, updated_at, status, visibility, view_count, word_count, cjk_char_count'
 
 type MatchUnit = 'title' | 'summary' | 'block'
 
@@ -213,7 +211,7 @@ async function runFilterOnlySearch(
 
 /**
  * Access + filter conditions for the `post` table. Returns null when a filter
- * can never match (e.g. unknown author), so the caller can short-circuit.
+ * can never match, so the caller can short-circuit.
  */
 async function buildPostWhere(
   db: Surreal,
@@ -221,21 +219,13 @@ async function buildPostWhere(
   viewer: PostSearchViewer,
   params: Record<string, unknown>
 ): Promise<string | null> {
-  const conditions = [buildAccessCondition(viewer, params)]
+  const conditions = [buildAccessCondition(viewer)]
 
   const filterIds = await resolveTaxonomyPostIds(db, criteria)
   if (filterIds) {
     if (!filterIds.length) return null
     params.filterIds = filterIds
     conditions.push('id IN $filterIds')
-  }
-
-  if (criteria.authors.length) {
-    const authors = await resolveSearchAuthors(db, criteria.authors)
-    if (!authors.length) return null
-    params.authorRecords = authors.map((author) => author.recordId)
-    params.authorUsernames = authors.map((author) => author.username)
-    conditions.push('(author IN $authorRecords OR (author IS NONE AND author_username IN $authorUsernames))')
   }
 
   const { from, to } = resolveSearchDateRange(criteria)
@@ -251,41 +241,22 @@ async function buildPostWhere(
   return conditions.map((condition) => `(${condition})`).join(' AND ')
 }
 
-function isAdminViewer(user: SessionUser | null) {
-  return user?.role === 'superadmin' || user?.role === 'admin'
-}
-
-function isContentManagerViewer(user: SessionUser | null) {
-  return isAdminViewer(user) || user?.role === 'author'
-}
-
 /**
  * Mirrors the post page rules:
- *  - admins: every published and draft post
- *  - authors: published posts + their own drafts (and their own private posts)
+ *  - owner: every published and draft post
  *  - everyone else: published public / password posts
  * Archived posts are never searchable.
  */
-function buildAccessCondition(viewer: PostSearchViewer, params: Record<string, unknown>): string {
-  if (isAdminViewer(viewer.user)) {
+function buildAccessCondition(viewer: PostSearchViewer): string {
+  if (viewer.user) {
     return "status IN ['published', 'draft']"
   }
-  const published = "(status = 'published' AND (visibility IS NONE OR visibility IN ['public', 'password']))"
-  const user = viewer.user
-  if (!user) return published
-
-  params.viewerTable = 'users'
-  params.viewerId = user.id.startsWith('users:') ? user.id.slice('users:'.length) : user.id
-  params.viewerUsername = user.username
-  const owned = '(author = type::record($viewerTable, $viewerId) OR author_username = $viewerUsername)'
-  const ownStatuses = isContentManagerViewer(user) ? "['published', 'draft']" : "['published']"
-  return `${published} OR (status IN ${ownStatuses} AND ${owned})`
+  return "(status = 'published' AND (visibility IS NONE OR visibility IN ['public', 'password']))"
 }
 
 function isLockedForViewer(post: PostRow, viewer: PostSearchViewer): boolean {
   if (post.visibility !== 'password') return false
-  if (isAdminViewer(viewer.user)) return false
-  if (viewer.user && isOwnedByUser(post, 'author', 'author_username', viewer.user)) return false
+  if (viewer.user) return false
   return !viewer.unlockedIds.has(stringifyRecordId(post.id))
 }
 

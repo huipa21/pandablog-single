@@ -1,4 +1,4 @@
-import { requireAdminTier } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { assertCanCreateUserRole, assertCanManageTargetUser, assertNotSelf } from '../../../utils/user-management'
 import { findUserById, isUserRole, updateUser, type UserRole } from '../../../utils/users'
 
@@ -11,7 +11,7 @@ interface BulkUsersBody {
 }
 
 export default defineEventHandler(async (event) => {
-  const actor = await requireAdminTier(event)
+  const actor = await requireOwner(event)
   const body = await readBody<BulkUsersBody>(event)
   const rawIds = Array.isArray(body?.ids) ? body.ids : []
   const ids = Array.from(new Set(rawIds.map((id) => String(id || '').trim()).filter(Boolean)))

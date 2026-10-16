@@ -1,9 +1,8 @@
 import type { H3Event } from 'h3'
 import { queryDb, useDb } from './db'
-import { getSessionUser, isAdminTier } from './auth'
+import { getSessionUser } from './auth'
 import { readUnlockedIds } from './post-password'
 import { firstRow } from './surrealResult'
-import { isOwnedByUser } from './permissions'
 
 export type SiteVisibility = 'public' | 'private'
 export type PostVisibility = 'public' | 'private' | 'password'
@@ -17,8 +16,6 @@ let cachedSiteVisibilityPromise: Promise<SiteVisibility> | null = null
 export interface PostAccessInput {
   id: string
   visibility: PostVisibility
-  author?: unknown
-  author_username?: string | null
 }
 
 export type PostAccess =
@@ -94,18 +91,10 @@ export async function setSiteVisibility(mode: SiteVisibility): Promise<void> {
 
 export async function evaluatePostAccess(event: H3Event, post: PostAccessInput): Promise<PostAccess> {
   const user = await getSessionUser(event)
-  if (isAdminTier(user)) return { state: 'allow' }
-
-  const isOwner = Boolean(user && isOwnedByUser(
-    { author: post.author, author_username: post.author_username },
-    'author',
-    'author_username',
-    user
-  ))
-  if (isOwner) return { state: 'allow' }
+  if (user) return { state: 'allow' }
 
   const site = await getSiteVisibility()
-  if (site === 'private' && !user) return { state: 'site-private' }
+  if (site === 'private') return { state: 'site-private' }
 
   if (post.visibility === 'public') return { state: 'allow' }
   if (post.visibility === 'private') return { state: 'not-found' }

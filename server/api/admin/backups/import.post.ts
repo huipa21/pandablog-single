@@ -1,14 +1,14 @@
 import { randomBytes } from 'node:crypto'
 import { mkdir, rm } from 'node:fs/promises'
 import * as path from 'node:path'
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { importExternalBackup } from '../../../utils/backups/importExternal'
 import { acquireJob, releaseJob } from '../../../utils/backups/jobMutex'
 import { BACKUPS_ROOT } from '../../../utils/backups/config'
 import { receiveBackupUpload } from '../../../utils/backups/upload'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
   const owner = await acquireJob({id: `import_${randomBytes(12).toString('hex')}`, kind: 'import', startedAt: new Date().toISOString()})
   const directory = path.join(BACKUPS_ROOT, `.upload-${owner.token}`)
   let created = false

@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({write: vi.fn()}))
 vi.mock('../../server/utils/admin-password', () => ({adminPasswordProblem: () => '', hashAdminPassword: async () => 'synthetic-hash'}))
 vi.mock('../../server/utils/activity', () => ({recordActivity: vi.fn()}))
 vi.mock('../../server/utils/settings', () => ({readAdminCredentials: async () => ({setupCompleted: false}), writeAdminCredentials: mocks.write}))
-vi.mock('../../server/utils/users', () => ({findUserByUsername: async () => ({id: 'users:admin', username: 'admin', role: 'superadmin', auth_epoch: 'a'.repeat(48)}), toSessionUser: () => ({id: 'users:admin', username: 'admin', role: 'superadmin'})}))
+vi.mock('../../server/utils/users', () => ({findUserByUsername: async () => ({id: 'users:admin', username: 'admin', auth_epoch: 'a'.repeat(48)}), toSessionUser: () => ({id: 'users:admin', username: 'admin'})}))
 afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.resetModules()})
 
 describe('REV-1.2 prerequisite gap: durable setup/recovery fence', () => {

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { annotate, ANNOT_LANGS } from '../../utils/annotate'
-import { requireContentManager } from '../../utils/auth'
+import { requireOwner } from '../../utils/auth'
 
 const MAX_ANNOTATION_TEXT_LENGTH = 5000
 
@@ -10,7 +10,7 @@ const requestSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireContentManager(event)
+  await requireOwner(event)
 
   const body = await readBody<unknown>(event)
   const parsed = requestSchema.safeParse(body)

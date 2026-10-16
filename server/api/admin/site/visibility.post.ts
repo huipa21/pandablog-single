@@ -1,9 +1,9 @@
-import { requireSuperadmin } from '../../../utils/auth'
+import { requireOwner } from '../../../utils/auth'
 import { recordActivity } from '../../../utils/activity'
 import { setSiteVisibility, type SiteVisibility } from '../../../utils/visibility'
 
 export default defineEventHandler(async (event) => {
-  await requireSuperadmin(event)
+  await requireOwner(event)
 
   const body = await readBody<{ mode?: SiteVisibility }>(event)
   if (body.mode !== 'public' && body.mode !== 'private') {

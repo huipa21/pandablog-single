@@ -1,11 +1,11 @@
 import { readPublicBootstrap } from '../../utils/publicBootstrap'
-import { isAuthenticated } from '../../utils/auth'
+import { isOwner } from '../../utils/auth'
 import { getSiteVisibility } from '../../utils/visibility'
 
 export default defineEventHandler(async (event) => {
   const [siteVisibility, authenticated, payload] = await Promise.all([
     getSiteVisibility(),
-    isAuthenticated(event),
+    isOwner(event),
     readPublicBootstrap()
   ])
 

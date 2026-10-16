@@ -8,7 +8,7 @@ import { getActiveThemeId, invalidateThemeCache, loadTheme } from '../../server/
 import { ThemeManifestSchema, ThemeTokensSchema } from '../../server/utils/theme-validator'
 
 const mocks = vi.hoisted(() => ({
-  queryDb: vi.fn(), useDb: vi.fn(), requireSuperadmin: vi.fn(), readBody: vi.fn(),
+  queryDb: vi.fn(), useDb: vi.fn(), requireOwner: vi.fn(), readBody: vi.fn(),
   getQuery: vi.fn(), getRouterParam: vi.fn(), setResponseHeader: vi.fn(), setResponseStatus: vi.fn(),
   invalidatePublicBootstrapCache: vi.fn(), writeAppSettings: vi.fn(),
   root: '',
@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   }
 }))
 vi.mock('../../server/utils/db', () => mocks)
-vi.mock('../../server/utils/auth', () => ({ requireSuperadmin: mocks.requireSuperadmin }))
+vi.mock('../../server/utils/auth', () => ({ requireOwner: mocks.requireOwner }))
 vi.mock('../../server/utils/publicBootstrap', () => ({ invalidatePublicBootstrapCache: mocks.invalidatePublicBootstrapCache }))
 vi.mock('../../server/utils/settings', () => ({ writeAppSettings: mocks.writeAppSettings }))
 // Redirect only relative theme reads to an owned temporary fixture. No checkout
@@ -116,7 +116,7 @@ describe('deployment-managed themes', () => {
     const result = await handler(event)
     expect(result.activeId).toBe('existing-custom')
     expect(result.themes.map(theme => theme.id).sort()).toEqual(['default', 'existing-custom'])
-    expect(mocks.requireSuperadmin).toHaveBeenCalledWith(event)
+    expect(mocks.requireOwner).toHaveBeenCalledWith(event)
     expect(mocks.queryDb).toHaveBeenCalledTimes(1)
     expect(mocks.queryDb.mock.calls[0]![1]).toMatch(/^SELECT /)
     expect(await readFile(join(mocks.root, 'existing-custom', 'theme.json'), 'utf8')).toContain('existing-custom')
@@ -192,7 +192,7 @@ describe('deployment-managed themes', () => {
   })
 
   it.each(['index.get', 'activate.post'])('denies unauthorized %s requests before reading theme data or settings', async route => {
-    mocks.requireSuperadmin.mockRejectedValue(Object.assign(new Error('Forbidden'), { statusCode: 403 }))
+    mocks.requireOwner.mockRejectedValue(Object.assign(new Error('Forbidden'), { statusCode: 403 }))
     const { default: handler } = route === 'index.get'
       ? await import('../../server/api/admin/themes/index.get')
       : await import('../../server/api/admin/themes/activate.post')
