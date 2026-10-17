@@ -217,6 +217,8 @@ argon2id and stored in SurrealDB. You can change it later from **Admin → Setti
 using the **Reset password** button to open the password dialog. Profile is the single editor
 for your display name, avatar, email, and public bio. The display name and avatar are shared
 by the public site and admin panel. Sign out is at the bottom of the admin sidebar.
+Profile controls, including the avatar URL, sidebar visibility switch, and rich-text bio,
+are associated with their visible labels for assistive technology.
 
 ### Upgrading from a multi-user build
 

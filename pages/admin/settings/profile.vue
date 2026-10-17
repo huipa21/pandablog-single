@@ -39,20 +39,21 @@
 
         <fieldset class="rounded-[var(--pb-radius-card-inner)] border border-[var(--pb-divider)] p-4">
           <legend class="px-1 text-sm font-medium text-[var(--pb-text-muted)]">{{ t('admin.settings.profile.sidebarVisibility') }}</legend>
-          <label class="flex cursor-pointer items-center justify-between gap-4 text-sm">
+          <label for="profile-sidebar-visibility" class="flex cursor-pointer items-center justify-between gap-4 text-sm">
             <span class="grid gap-1">
               <span class="font-medium text-[var(--pb-text)]">{{ t('admin.settings.profile.showInSidebar') }}</span>
               <span class="text-xs text-[var(--pb-text-muted)]">{{ t('admin.settings.profile.hideBioHelp') }}</span>
             </span>
-            <USwitch v-model="form.owner_bio_visible" />
+            <USwitch id="profile-sidebar-visibility" v-model="form.owner_bio_visible" name="owner_bio_visible" />
           </label>
         </fieldset>
 
-        <UFormField :label="t('admin.settings.profile.bio')" name="owner_bio">
+        <div class="grid gap-1">
+          <p id="profile-bio-label" class="text-sm font-medium text-[var(--pb-text)]">{{ t('admin.settings.profile.bio') }}</p>
           <div class="rounded-[var(--pb-radius-card-inner)] border border-[var(--pb-divider)] bg-[var(--pb-card-bg)] p-3">
-            <BlockEditor v-model="form.owner_bio" />
+            <BlockEditor v-model="form.owner_bio" aria-labelledby="profile-bio-label" />
           </div>
-        </UFormField>
+        </div>
 
         <div class="flex flex-wrap justify-between gap-3">
           <UButton type="button" variant="outline" color="neutral" icon="i-lucide-key-round" :disabled="saving" @click="resetPasswordOpen = true">

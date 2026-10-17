@@ -291,6 +291,7 @@ const props = defineProps<{
   modelValue: JsonContent
   useInlineInserter?: boolean
   readonly?: boolean
+  ariaLabelledby?: string
 }>()
 
 const emit = defineEmits<{
@@ -634,9 +635,12 @@ const editor = useEditor({
     ...inlineMathExtensions
   ],
   editorProps: {
-    attributes: {
-      class: 'min-h-[360px] focus:outline-none'
-    },
+    attributes: () => ({
+      class: 'min-h-[360px] focus:outline-none',
+      role: 'textbox',
+      'aria-multiline': 'true',
+      ...(props.ariaLabelledby ? { 'aria-labelledby': props.ariaLabelledby } : {})
+    }),
     handlePaste(view, event) {
       if (uploadImagesFromList(event.clipboardData?.files, view.state.selection.from, true)) {
         return true

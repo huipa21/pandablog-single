@@ -103,6 +103,35 @@ test('has one Profile form, one display name, and no Account section', async ({ 
   await expect(page.locator('input[autocomplete="email"]')).toHaveValue('updated@example.test')
 })
 
+test('associates profile labels with controls and identifies every form input', async ({ page }) => {
+  const form = page.locator('main form')
+  await expect(form.getByRole('textbox', { name: 'Avatar', exact: true })).toBeVisible()
+  const bio = form.getByRole('textbox', { name: 'Bio', exact: true })
+  await expect(bio).toBeVisible()
+  await expect(bio).toHaveAttribute('aria-multiline', 'true')
+  await bio.fill('An accessible public bio')
+  await expect(bio).toContainText('An accessible public bio')
+
+  const visibility = form.getByRole('switch', { name: /^Show this profile in the public site sidebar/ })
+  await expect(visibility).toBeChecked()
+  await visibility.click()
+  await expect(visibility).not.toBeChecked()
+  await form.getByText('Show this profile in the public site sidebar', { exact: true }).click()
+  await expect(visibility).toBeChecked()
+
+  expect(await form.locator('input, select, textarea').evaluateAll(elements =>
+    elements.filter(element => !element.id && !element.getAttribute('name')).map(element => element.outerHTML)
+  )).toEqual([])
+  expect(await form.locator('label').evaluateAll(elements =>
+    elements.filter(element => !(element instanceof HTMLLabelElement) || !element.control).map(element => element.outerHTML)
+  )).toEqual([])
+
+  const devtools = await page.context().newCDPSession(page)
+  const { formIssues } = await devtools.send('Audits.checkFormsIssues')
+  expect(formIssues).toEqual([])
+  await devtools.detach()
+})
+
 test('uses the same saved display name and avatar in admin and the public owner card', async ({ page }) => {
   await expect(page.locator('header img[alt="Public Owner"]')).toHaveAttribute('src', avatar)
   const profileForm = page.locator('main form').first()

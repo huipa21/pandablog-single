@@ -1,6 +1,6 @@
 <template>
   <div class="grid gap-2">
-    <label class="text-sm font-medium text-[var(--pb-text-muted)]">{{ label }}</label>
+    <label :for="inputId" class="text-sm font-medium text-[var(--pb-text-muted)]">{{ label }}</label>
     <div v-if="previewSource" class="relative overflow-hidden rounded-[var(--pb-radius-card-inner)] border border-[var(--pb-divider)] bg-[var(--pb-surface-subtle)]" :class="previewContainerClass">
       <img v-if="!previewFailed" :src="previewSource" :alt="label" class="bg-[var(--pb-surface-subtle)]" :class="previewImageClass || [previewClass || 'h-36', 'w-full', 'object-cover']" :style="previewStyle" @error="previewFailed = true">
       <div v-else class="flex flex-col items-center justify-center gap-2 bg-[var(--pb-surface-subtle)] px-4 py-8 text-center text-[var(--pb-text-subtle)]" :class="previewImageClass || [previewClass || 'h-36', 'w-full']" :style="previewStyle">
@@ -17,6 +17,7 @@
     </div>
     <div class="grid gap-2 md:grid-cols-[1fr_auto]">
       <UInput
+        :id="inputId"
         :model-value="modelValue"
         icon="i-lucide-link"
         :placeholder="placeholder || '/uploads/... or https://...'"
@@ -41,6 +42,7 @@ const props = defineProps<{
   previewStyle?: Record<string, string>
 }>()
 
+const inputId = useId()
 const previewSource = computed(() => props.previewValue || props.modelValue)
 const previewFailed = ref(false)
 
