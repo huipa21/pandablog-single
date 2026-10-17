@@ -65,12 +65,7 @@
             <UButton v-if="isLoggedIn" to="/admin/dashboard" variant="ghost" color="neutral" icon="i-lucide-layout-dashboard" size="sm">
               {{ t('public.nav.admin') }}
             </UButton>
-            <UDropdownMenu v-if="isLoggedIn" :items="accountMenuItems">
-              <button type="button" class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--pb-selected-bg)] text-xs font-semibold text-[var(--pb-primary)] transition hover:opacity-90" :disabled="loggingOut" :aria-label="accountName" :title="accountName">
-                <img v-if="accountAvatarUrl" :src="accountAvatarUrl" alt="" class="h-full w-full object-cover">
-                <span v-else>{{ accountInitials }}</span>
-              </button>
-            </UDropdownMenu>
+            <ProfileAvatar v-if="isLoggedIn" class="size-8" />
             <UButton v-if="!isLoggedIn" to="/login" variant="ghost" color="neutral" icon="i-lucide-log-in" size="sm">
               {{ t('public.nav.login') }}
             </UButton>
@@ -167,12 +162,7 @@
           <UButton v-if="isLoggedIn" to="/admin/dashboard" variant="ghost" color="neutral" icon="i-lucide-layout-dashboard" size="sm">
             {{ t('public.nav.admin') }}
           </UButton>
-          <UDropdownMenu v-if="isLoggedIn" :items="accountMenuItems">
-            <button type="button" class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--pb-selected-bg)] text-xs font-semibold text-[var(--pb-primary)] transition hover:opacity-90" :disabled="loggingOut" :aria-label="accountName" :title="accountName">
-              <img v-if="accountAvatarUrl" :src="accountAvatarUrl" alt="" class="h-full w-full object-cover">
-              <span v-else>{{ accountInitials }}</span>
-            </button>
-          </UDropdownMenu>
+          <ProfileAvatar v-if="isLoggedIn" class="size-8" />
           <UButton v-if="!isLoggedIn" to="/login" variant="ghost" color="neutral" icon="i-lucide-log-in" size="sm">
             <span class="hidden sm:inline">{{ t('public.nav.login') }}</span>
           </UButton>
@@ -351,17 +341,7 @@ const {
 } = usePostViewMode()
 const { data: authSession } = await usePublicAuthSession()
 const isLoggedIn = computed(() => Boolean(authSession.value?.loggedIn))
-const accountUser = computed(() => authSession.value?.user ?? null)
-const accountName = computed(() => accountUser.value?.display_name || accountUser.value?.username || t('admin.layout.account'))
-const accountAvatarUrl = computed(() => accountUser.value?.avatar_url || '')
-const accountInitials = computed(() => initialsFor(accountName.value))
-const accountMenuItems = computed(() => [[
-  { label: t('admin.layout.myProfile'), icon: 'i-lucide-user', onSelect: () => navigateTo('/admin/settings/account') }
-], [
-  { label: t('admin.layout.signOut'), icon: 'i-lucide-log-out', color: 'error' as const, onSelect: logout }
-]])
 const creatingQuickPost = ref(false)
-const loggingOut = ref(false)
 const hasPageSidebar = computed(() => Boolean(slots.sidebar))
 const isHome = computed(() => route.path === '/')
 const showPostViewToggle = computed(() => {
@@ -429,23 +409,6 @@ function openMediaUploader() {
 
 function openPublicSearch() {
   publicSearchOpen.value = true
-}
-
-async function logout() {
-  loggingOut.value = true
-  try {
-    await $fetch('/api/auth/logout', { method: 'POST' })
-    await refreshNuxtData('public-auth-session')
-    await navigateTo('/')
-  } finally {
-    loggingOut.value = false
-  }
-}
-
-function initialsFor(value: string) {
-  const parts = value.trim().split(/\s+/).filter(Boolean)
-  const letters = parts.length > 1 ? `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}` : value.slice(0, 2)
-  return letters.toUpperCase() || 'U'
 }
 
 watch(() => route.fullPath, () => {

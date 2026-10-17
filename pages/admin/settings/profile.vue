@@ -56,6 +56,8 @@
       </template>
     </form>
 
+    <AccountSettings />
+
     <MediaPicker
       :open="mediaPickerOpen"
       return-value="url"
@@ -82,6 +84,7 @@
 import MediaPicker from '~/components/admin/media/MediaPicker.vue'
 import MediaSettingField from '~/components/admin/media/MediaSettingField.vue'
 import BlockEditor from '~/components/admin/editor/blocks/BlockEditor.vue'
+import AccountSettings from '~/components/admin/AccountSettings.vue'
 import type { JsonContent, MediaRecord } from '~/types/content'
 
 definePageMeta({ layout: 'admin' })
@@ -126,6 +129,7 @@ async function save() {
         owner_bio: form.owner_bio
       }
     })
+    await refreshNuxtData(['public-bootstrap', 'admin-layout-settings'])
     adminToast.success(t('admin.settings.profile.saved'))
   } catch (err: any) {
     adminToast.error(err, t('admin.settings.profile.saveFailed'))

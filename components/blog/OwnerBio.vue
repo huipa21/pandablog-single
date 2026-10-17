@@ -1,15 +1,7 @@
 <template>
   <div v-if="ownerBioVisible && hasProfile" class="rounded-[var(--pb-radius-card-outer)] border border-[var(--pb-card-border)] bg-[var(--pb-card-bg)] p-4 shadow-[var(--pb-shadow-sm)]">
     <div class="flex items-center gap-3">
-      <img
-        v-if="ownerAvatar"
-        :src="ownerAvatar"
-        :alt="ownerName"
-        class="h-12 w-12 rounded-full object-cover"
-      >
-      <div v-else class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--pb-selected-bg)] text-[var(--pb-icon-accent)]">
-        <UIcon name="i-lucide-user" class="size-6 text-[var(--pb-icon-accent)]" />
-      </div>
+      <ProfileAvatar class="size-12" />
       <div>
         <div class="font-semibold text-[var(--pb-text)]">{{ ownerName }}</div>
         <div v-if="ownerMotto" class="mt-0.5 text-xs text-[var(--pb-text-subtle)]">{{ ownerMotto }}</div>

@@ -42,7 +42,8 @@
       "account": "Account",
       "myProfile": "My profile",
       "viewSite": "View site",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "signOutFailed": "Could not sign out"
     },
     "common": {
       "edit": "Edit",
@@ -1404,7 +1405,7 @@
       },
       "profile": {
         "title": "Profile",
-        "description": "Configure the owner bio widget shown in the public sidebar.",
+        "description": "Manage your public profile, account details, and password. Your profile avatar is shared by the public site and admin panel.",
         "displayName": "Display name",
         "motto": "Motto",
         "avatar": "Avatar",

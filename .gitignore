@@ -45,6 +45,7 @@ tests/*
 !tests/e2e/
 tests/e2e/*
 !tests/e2e/login-redirect.spec.ts
+!tests/e2e/profile-navigation.spec.ts
 !tests/e2e/public-responsive-layout.spec.ts
 !tests/e2e/advanced-search.spec.ts
 !tests/e2e/all-blocks-parity.spec.ts
@@ -67,6 +68,7 @@ tests/unit/*
 !tests/unit/editor-settings.test.ts
 !tests/unit/theme-management.test.ts
 !tests/unit/authRedirect.test.ts
+!tests/unit/profile-avatar.test.ts
 !tests/unit/analytics.test.ts
 !tests/unit/analytics-bounds.test.ts
 !tests/unit/analytics-track-http.test.ts

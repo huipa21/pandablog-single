@@ -74,16 +74,10 @@
             :loading="themeModeSaving"
             @click="toggleThemeMode"
           />
-          <UDropdownMenu :items="accountMenuItems">
-            <button type="button" class="flex h-10 max-w-48 items-center gap-2 rounded-[var(--pb-radius-lg)] px-2 text-sm font-medium text-[var(--pb-text)] transition hover:bg-[var(--pb-surface-subtle)]" :disabled="loggingOut">
-              <span class="grid size-8 place-items-center overflow-hidden rounded-full bg-[var(--pb-selected-bg)] text-xs font-semibold text-[var(--pb-primary)]">
-                <img v-if="accountAvatarUrl" :src="accountAvatarUrl" alt="" class="h-full w-full object-cover">
-                <span v-else>{{ accountInitials }}</span>
-              </span>
-              <span class="hidden truncate sm:inline">{{ accountName }}</span>
-              <UIcon name="i-lucide-chevron-down" class="hidden size-4 shrink-0 text-[var(--pb-text-subtle)] sm:block" />
-            </button>
-          </UDropdownMenu>
+          <div class="flex h-10 max-w-48 items-center gap-2 px-2 text-sm font-medium text-[var(--pb-text)]">
+            <ProfileAvatar class="size-8" />
+            <span class="hidden truncate sm:inline">{{ accountName }}</span>
+          </div>
         </div>
       </div>
     </header>
@@ -164,6 +158,21 @@
       >
         <UIcon :name="collapsed ? 'i-lucide-chevrons-right' : 'i-lucide-chevrons-left'" class="size-5 shrink-0" />
         <span v-if="!collapsed">{{ t('admin.layout.collapse') }}</span>
+      </button>
+      <button
+        v-if="isLoggedIn"
+        type="button"
+        data-testid="admin-sign-out"
+        class="mt-1 flex min-h-11 shrink-0 items-center gap-3 rounded-[var(--pb-radius-lg)] px-3 text-sm font-medium text-[var(--pb-text-muted)] transition hover:bg-[var(--pb-surface-subtle)] hover:text-[var(--pb-text)] disabled:opacity-50"
+        :class="collapsed ? 'md:justify-center md:px-0' : ''"
+        :aria-label="t('admin.layout.signOut')"
+        :title="collapsed ? t('admin.layout.signOut') : undefined"
+        :disabled="loggingOut"
+        @click="logout"
+      >
+        <UIcon :name="loggingOut ? 'i-lucide-loader-circle' : 'i-lucide-log-out'" class="size-5 shrink-0" :class="loggingOut ? 'animate-spin' : ''" />
+        <span class="md:hidden">{{ t('admin.layout.signOut') }}</span>
+        <span v-if="!collapsed" class="hidden md:inline">{{ t('admin.layout.signOut') }}</span>
       </button>
     </aside>
 
@@ -246,18 +255,11 @@ const loggingOut = ref(false)
 const mainClass = computed(() => route.meta.adminWide === true ? 'min-w-0' : 'min-w-0 px-4 py-8 md:px-8')
 const accountUser = computed(() => authSession.value?.user ?? null)
 const accountName = computed(() => accountUser.value?.display_name || accountUser.value?.username || t('admin.layout.account'))
-const accountAvatarUrl = computed(() => accountUser.value?.avatar_url || '')
-const accountInitials = computed(() => initialsFor(accountName.value))
 const adminToast = useAdminToast()
 const creatingQuickPost = ref(false)
 const quickNewItems = computed(() => [[
   { label: t('public.nav.newPost'), icon: 'i-lucide-file-plus-2', disabled: creatingQuickPost.value, onSelect: createQuickPost },
   { label: t('public.nav.newMedia'), icon: 'i-lucide-upload', onSelect: openMediaUploader }
-]])
-const accountMenuItems = computed(() => [[
-  { label: t('admin.layout.myProfile'), icon: 'i-lucide-user', onSelect: () => navigateTo('/admin/settings/account') }
-], [
-  { label: t('admin.layout.signOut'), icon: 'i-lucide-log-out', color: 'error' as const, onSelect: logout }
 ]])
 
 const STORAGE_KEY = 'pb-admin-sidebar-collapsed'
@@ -328,7 +330,6 @@ const navSections = computed(() => {
     items: [
       { to: '/admin/settings/general', label: t('admin.nav.general'), icon: 'i-lucide-sliders-horizontal' },
       { to: '/admin/settings/profile', label: t('admin.nav.profile'), icon: 'i-lucide-user' },
-      { to: '/admin/settings/account', label: t('admin.nav.account'), icon: 'i-lucide-user-cog' },
       { to: '/admin/settings/themes', label: t('admin.nav.themes'), icon: 'i-lucide-palette' },
       { to: '/admin/settings/analytics', label: t('admin.nav.analyticsSettings'), icon: 'i-lucide-chart-no-axes-combined' },
       { to: '/admin/settings/security', label: t('admin.nav.security'), icon: 'i-lucide-shield-check' },
@@ -476,18 +477,16 @@ function openMediaUploader() {
 }
 
 async function logout() {
+  if (loggingOut.value) return
   loggingOut.value = true
   try {
     await $fetch('/api/auth/logout', { method: 'POST' })
+    await refreshNuxtData(['public-auth-session', 'admin-layout-session'])
     await navigateTo('/login')
+  } catch (error: unknown) {
+    adminToast.error(error, t('admin.layout.signOutFailed'))
   } finally {
     loggingOut.value = false
   }
-}
-
-function initialsFor(value: string) {
-  const parts = value.trim().split(/\s+/).filter(Boolean)
-  const letters = parts.length > 1 ? `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}` : value.slice(0, 2)
-  return letters.toUpperCase() || 'U'
 }
 </script>
