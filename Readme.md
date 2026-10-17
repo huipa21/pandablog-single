@@ -101,6 +101,19 @@ managing media, and configuring your site — all backed by SurrealDB.
    unit tests; do not bypass peer dependency conflicts with `--force` or
    `--legacy-peer-deps`.
 
+   The container uses Node 22 with npm 10. After dependency changes, regenerate
+   and validate `package-lock.json` with that npm major before committing it:
+
+   ```bash
+   npx --yes npm@10 install --package-lock-only --ignore-scripts --no-audit --no-fund
+   npx --yes npm@10 ci --dry-run --ignore-scripts --no-audit --no-fund
+   ```
+
+   npm 12 can accept a lockfile that omits optional peer dependencies required
+   by npm 10, causing the container's `npm ci` to fail with `EUSAGE` and
+   `Missing: ... from lock file`. Keep `npm ci` in the container; repair and
+   commit the lockfile rather than bypassing its consistency check.
+
 2. **Start SurrealDB** (skip if you already have a reachable instance). For example, with Docker:
 
    ```bash
