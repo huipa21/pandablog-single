@@ -4,7 +4,11 @@ import { ModuleKind, transpileModule } from 'typescript'
 import * as vue from 'vue'
 import * as pinia from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { EditorOptions } from '@tiptap/core'
+import StarterKit from '@tiptap/starter-kit'
 import { useEditorStore } from '../../stores/editor'
+import type { JsonContent } from '../../types/content'
+import { normalizeBlockPresentation } from '../../utils/blockPresentation'
 
 // Execute the actual SFC setup with real Vue reactivity and Pinia. Tiptap/DOM
 // adapters are replaced: these tests exercise inserter state, not rendering.
@@ -26,6 +30,8 @@ const extension: any = new Proxy(() => extension, {
   get: (_target, key) => key === '__esModule' ? true : key === 'then' ? undefined : extension
 })
 let editor: any
+let editorOptions: Partial<EditorOptions> | undefined
+let modelValue: vue.Ref<JsonContent>
 let state: any
 let app: vue.App | undefined
 let store: ReturnType<typeof useEditorStore>
@@ -42,7 +48,12 @@ function loadComponent() {
   new Function('require', 'exports', code)((id: string) => {
     if (id === 'vue') return vue
     if (id === 'pinia') return pinia
-    if (id === '@tiptap/vue-3') return { useEditor: () => vue.shallowRef(editor), VueNodeViewRenderer: vi.fn() }
+    if (id === '@tiptap/vue-3') return { useEditor: (options: Partial<EditorOptions>) => {
+      editorOptions = options
+      return vue.shallowRef(editor)
+    }, VueNodeViewRenderer: vi.fn() }
+    if (id === '@tiptap/starter-kit') return { __esModule: true, default: StarterKit }
+    if (id.endsWith('blockPresentation')) return { normalizeBlockPresentation }
     if (id === 'lowlight') return { common: {}, createLowlight: () => ({ register: vi.fn() }) }
     if (id.endsWith('useAutoScroll')) return { useAutoScroll: () => ({}) }
     if (id.endsWith('useMediaUrl')) return { useMediaUrl: () => ({ resolveMediaUrl: (url: string) => url, toPublicMediaUrl: (url: string) => url }) }
@@ -60,7 +71,7 @@ async function mount(initiallyOpen = false) {
   if (initiallyOpen) store.openInserter()
   const Component = loadComponent()
   app = host.createApp({ render: () => vue.h(vue.Suspense, null, {
-    default: () => vue.h(Component, { modelValue: { type: 'doc', content: [] } })
+    default: () => vue.h(Component, { modelValue: modelValue.value })
   }) })
   app.use(piniaInstance)
   app.mount({})
@@ -70,6 +81,8 @@ async function mount(initiallyOpen = false) {
 
 beforeEach(() => {
   state = undefined
+  editorOptions = undefined
+  modelValue = vue.ref<JsonContent>({ type: 'doc', content: [] })
   piniaInstance = pinia.createPinia()
   pinia.setActivePinia(piniaInstance)
   for (const key of ['ref', 'computed', 'watch', 'nextTick', 'onMounted', 'onBeforeUnmount'] as const) vi.stubGlobal(key, vue[key])
@@ -80,7 +93,7 @@ beforeEach(() => {
   vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn(), cancelAnimationFrame: vi.fn() })
   store = useEditorStore()
   const chain: any = { focus: () => chain, deleteRange: vi.fn(() => chain), run: vi.fn() }
-  editor = { chain: () => chain, destroy: vi.fn(), isDestroyed: false, state: { doc: { content: { size: 20 }, forEach: vi.fn() } } }
+  editor = { chain: () => chain, commands: { setContent: vi.fn() }, destroy: vi.fn(), isDestroyed: false, state: { doc: { content: { size: 20 }, forEach: vi.fn() } } }
 })
 afterEach(() => {
   app?.unmount()
@@ -90,6 +103,26 @@ afterEach(() => {
 })
 
 describe('BlockEditor inserter with real Pinia state', () => {
+  it('disables v3 StarterKit additions handled by the existing editor', async () => {
+    await mount()
+    const starterKit = editorOptions?.extensions?.find((extension) => extension.name === 'starterKit')
+    expect(starterKit?.options).toMatchObject({
+      link: false,
+      underline: false,
+      trailingNode: false
+    })
+  })
+
+  it('applies external content without emitting an update using the v3 options object', async () => {
+    await mount()
+    modelValue.value = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'External content' }] }] }
+    await vue.nextTick()
+    expect(editor.commands.setContent).toHaveBeenCalledExactlyOnceWith(
+      normalizeBlockPresentation(modelValue.value),
+      { emitUpdate: false }
+    )
+  })
+
   it('clears pending insertion and selection when the reused page changes posts', async () => {
     await mount()
     expect(postChangeWatcher).toBeDefined()

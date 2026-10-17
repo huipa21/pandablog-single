@@ -71,7 +71,7 @@ managing media, and configuring your site — all backed by SurrealDB.
 - [Pinia](https://pinia.vuejs.org/) for client state
 - [SurrealDB](https://surrealdb.com/) 3.x for data, full-text indexes, and graph relations
 - [`nuxt-auth-utils`](https://github.com/atinux/nuxt-auth-utils) for encrypted session cookies
-- [Tiptap v2](https://tiptap.dev/) for the admin editor
+- [Tiptap v3](https://tiptap.dev/) for the admin editor
 - [Shiki](https://shiki.style/) for public code highlighting, [Mermaid](https://mermaid.js.org/)
   for diagrams, [KaTeX](https://katex.org/) for math
 - [`sharp`](https://sharp.pixelplumbing.com/) for image processing, [`argon2`](https://github.com/ranisalt/node-argon2)
@@ -95,6 +95,11 @@ managing media, and configuring your site — all backed by SurrealDB.
    ```bash
    npm install
    ```
+
+   Keep the direct `@tiptap/*` dependencies on matching v3 versions, including
+   `@tiptap/pm`. After dependency updates, run `npm run typecheck` and the editor
+   unit tests; do not bypass peer dependency conflicts with `--force` or
+   `--legacy-peer-deps`.
 
 2. **Start SurrealDB** (skip if you already have a reachable instance). For example, with Docker:
 
@@ -606,7 +611,10 @@ rollback and actual proxy checks. Pending project acceptance is not deployment a
    ```
 
    This computes the build version from git and passes it in, tagging the result as both
-   `pandablog:<version>` and `pandablog:latest`. Extra arguments are forwarded to the container engine.
+   `pandablog-single:<version>` and `pandablog-single:latest`. The Compose file uses
+   `pandablog-single:latest` by default; set `PANDABLOG_IMAGE` in
+   `deploy/production/.env` to use a different local or registry image. Extra arguments
+   are forwarded to the container engine.
 
    See [docs/versioning-and-cli.md](docs/versioning-and-cli.md) for details.
 
@@ -640,7 +648,7 @@ rollback and actual proxy checks. Pending project acceptance is not deployment a
      --env-file deploy/production/.env \
      --log-driver json-file --log-opt max-size=10m --log-opt max-file=5 \
      -v pandablog-storage:/app/storage \
-     pandablog:latest
+     pandablog-single:latest
    ```
 
 Notes:
@@ -649,7 +657,7 @@ Notes:
 
   ```bash
   docker exec pandablog-app panda info
-  docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' pandablog:latest
+  docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' pandablog-single:latest
   ```
 
 - Keep real secrets in the runtime `.env`; never bake them into the image.

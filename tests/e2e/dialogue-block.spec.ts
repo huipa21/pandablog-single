@@ -21,7 +21,7 @@ async function openPost(page: Page, content: JSONContent = { type: 'doc', conten
   await expect(page.locator('.ProseMirror')).toBeVisible()
   return slug
 }
-async function json(page: Page) {
+async function json(page: Page): Promise<JSONContent> {
   return page.locator('.ProseMirror').evaluate((element) => (element as EditorElement).editor.getJSON())
 }
 async function selectLine(page: Page, index: number, offset = 0) {

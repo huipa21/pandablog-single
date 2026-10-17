@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${PANDABLOG_IMAGE:-localhost/pandablog:latest}
+    image: ${PANDABLOG_IMAGE:-pandablog-single:latest}
     # Match the UID:GID that OWNS the bind-mounted ./app-storage directory on
     # the host. This is important to ensure that the container can read/write to this volume.
     # the deploy user is most likely 1000. Adjust if different.

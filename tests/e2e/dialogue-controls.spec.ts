@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import type { Editor } from '@tiptap/core'
+import type { Editor, JSONContent } from '@tiptap/core'
 import { dialogueCharacters } from './fixtures/dialogue'
 import { DIALOGUE_MAX_CHARACTERS, DIALOGUE_PALETTE } from '../../extensions/dialogueBlock'
 import type { MediaRecord } from '../../types/content'
@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('.ProseMirror .dialogue-block')).toBeVisible()
 })
 
-async function lines(page: import('@playwright/test').Page) {
+async function lines(page: import('@playwright/test').Page): Promise<JSONContent[]> {
   return page.locator('.ProseMirror').evaluate((element) => (element as EditorElement).editor.getJSON().content?.find((node) => node.type === 'dialogueBlock')?.content ?? [])
 }
 async function selectLine(page: import('@playwright/test').Page, index: number, atEnd = false) {

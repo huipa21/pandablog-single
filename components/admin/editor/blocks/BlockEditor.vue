@@ -210,12 +210,12 @@ import Dropcursor from '@tiptap/extension-dropcursor'
 import FontFamily from '@tiptap/extension-font-family'
 import GapCursor from '@tiptap/extension-gapcursor'
 import Placeholder from '@tiptap/extension-placeholder'
-import Table from '@tiptap/extension-table'
+import { Table } from '@tiptap/extension-table'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import TableRow from '@tiptap/extension-table-row'
 import TextAlign from '@tiptap/extension-text-align'
-import TextStyle from '@tiptap/extension-text-style'
+import { TextStyle } from '@tiptap/extension-text-style'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import type { Editor, Extensions } from '@tiptap/core'
@@ -503,6 +503,9 @@ const editor = useEditor({
       dropcursor: false,
       gapcursor: false,
       listItem: false,
+      link: false,
+      underline: false,
+      trailingNode: false,
       blockquote: false,
       heading: { levels: [1, 2, 3, 4, 5, 6] },
       horizontalRule: false
@@ -939,7 +942,7 @@ watch(() => props.modelValue, (value) => {
 
   const nextValueJson = JSON.stringify(value)
   if (nextValueJson !== lastAppliedModelValueJson) {
-    ed.commands.setContent(normalizeBlockPresentation(value), false)
+    ed.commands.setContent(normalizeBlockPresentation(value), { emitUpdate: false })
     lastAppliedModelValueJson = nextValueJson
   }
   lastEmittedModelValue = null
@@ -1426,7 +1429,7 @@ function syncFootnotesConsistency(ed: Editor) {
 
   syncingFootnotes = true
   const { from, to } = ed.state.selection
-  ed.commands.setContent(normalized.doc, false)
+  ed.commands.setContent(normalized.doc, { emitUpdate: false })
 
   const max = Math.max(1, ed.state.doc.content.size)
   const nextFrom = Math.max(1, Math.min(from, max))
@@ -2327,7 +2330,7 @@ function onBlockDrop(targetIndex: number) {
   const nextTarget = footnotesIndex >= 0 ? Math.min(adjustedTarget, footnotesIndex) : adjustedTarget
   content.splice(nextTarget, 0, moved)
 
-  ed.commands.setContent({ type: 'doc', content }, false)
+  ed.commands.setContent({ type: 'doc', content }, { emitUpdate: false })
   const nextValue = ed.getJSON() as JsonContent
   lastEmittedModelValue = nextValue
   lastAppliedModelValueJson = JSON.stringify(nextValue)

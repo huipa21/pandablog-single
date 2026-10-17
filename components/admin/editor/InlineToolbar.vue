@@ -2,7 +2,8 @@
   <BubbleMenu
     v-if="editor"
     :editor="editor"
-    :tippy-options="bubbleTippyOptions"
+    :append-to="bubbleAppendTo"
+    :options="bubbleOptions"
     :should-show="shouldShow"
   >
     <div class="inline-formatting-toolbar flex items-center gap-1 rounded-md border border-stone-200 bg-white p-1 shadow-lg" data-testid="inline-formatting-toolbar">
@@ -67,7 +68,8 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
-import { BubbleMenu } from '@tiptap/vue-3'
+import { BubbleMenu } from '@tiptap/vue-3/menus'
+import type { BubbleMenuPluginProps } from '@tiptap/extension-bubble-menu'
 import { curatedHighlightOptions } from '~/utils/highlightColors'
 
 const props = defineProps<{
@@ -75,12 +77,12 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const bubbleTippyOptions = {
-  appendTo: () => document.body,
-  duration: 120,
-  interactive: true,
-  placement: 'top' as const,
-  maxWidth: 'calc(100vw - 1rem)'
+const bubbleAppendTo = () => document.body
+const bubbleOptions: BubbleMenuPluginProps['options'] = {
+  placement: 'top',
+  offset: 8,
+  flip: true,
+  shift: { padding: 8 }
 }
 const prefersDarkToolbar = ref(false)
 const highlightColors = curatedHighlightOptions()
@@ -171,6 +173,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.inline-formatting-toolbar {
+  max-width: calc(100vw - 1rem);
+}
+
 @media (max-width: 767px) {
   .inline-formatting-toolbar {
     position: fixed;

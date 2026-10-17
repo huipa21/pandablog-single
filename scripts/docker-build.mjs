@@ -15,7 +15,7 @@
  *   npm run container:build
  *   npm run docker:build
  *   npm run podman:build
- *   npm run container:build -- -t myregistry/pandablog:custom
+ *   npm run container:build -- -t myregistry/pandablog-single:custom
  *   APP_VERSION=v1.0.0 npm run container:build
  *
  * APP_VERSION optionally supplies a tag-safe release label; Git metadata and
@@ -92,7 +92,7 @@ const args = [
   '--build-arg', `APP_VERSION=${info.version}`,
   '--build-arg', `APP_COMMIT=${info.sha}`,
   '--build-arg', `APP_COMMIT_DATE=${info.committedAt}`,
-  ...(hasTag ? [] : ['-t', `pandablog:${tag}`, '-t', 'pandablog:latest']),
+  ...(hasTag ? [] : ['-t', `pandablog-single:${tag}`, '-t', 'pandablog-single:latest']),
   ...passthrough,
   '.'
 ]
