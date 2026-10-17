@@ -1,4 +1,5 @@
 import type { JsonContent } from '~/types/content'
+import { flattenContentText } from '~/utils/contentText'
 
 export interface TocItem {
   id: string
@@ -69,7 +70,7 @@ export function extractTableOfContents(content: JsonContent | null | undefined):
     }
 
     if (node.type === 'heading') {
-      const text = flattenNodeText(node).trim()
+      const text = flattenContentText(node).trim()
       if (text) {
         items.push({
           id: slugifyHeading(text),
@@ -91,12 +92,4 @@ export function extractTableOfContents(content: JsonContent | null | undefined):
 function cleanLevel(value: unknown) {
   const level = Number(value)
   return [1, 2, 3].includes(level) ? level : 2
-}
-
-function flattenNodeText(node: JsonContent): string {
-  if (node.type === 'text') {
-    return node.text ?? ''
-  }
-
-  return node.content?.map(flattenNodeText).join(' ') ?? ''
 }

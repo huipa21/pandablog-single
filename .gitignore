@@ -91,6 +91,8 @@ tests/unit/*
 !tests/unit/maintenance-crash.test.ts
 !tests/unit/maintenance-simplification.test.ts
 !tests/unit/backup-status.test.ts
+!tests/unit/contentText.test.ts
+!tests/unit/footnotes.test.ts
 !tests/unit/backups/
 !tests/unit/backups/*.test.ts
 !tests/integration/db-lifecycle.test.ts

@@ -12,6 +12,7 @@
 
 <script setup lang="ts">
 import type { JsonContent } from '~/types/content'
+import { flattenContentText } from '~/utils/contentText'
 
 const props = defineProps<{
   content: JsonContent
@@ -83,7 +84,7 @@ function extractFootnoteNotes(doc: JsonContent) {
       return []
     }
 
-    return (orderedList.content ?? []).map((item) => flattenNodeText(item).trim())
+    return (orderedList.content ?? []).map((item) => flattenContentText(item).trim())
   }
 
   if (children.length < 2) return []
@@ -93,18 +94,11 @@ function extractFootnoteNotes(doc: JsonContent) {
     const heading = children[i - 1]
     if (!heading || !orderedList) continue
     if (heading.type !== 'paragraph' || orderedList.type !== 'orderedList') continue
-    if (flattenNodeText(heading).trim().toLowerCase() !== 'footnotes') continue
-    return (orderedList.content ?? []).map((item) => flattenNodeText(item).trim())
+    if (flattenContentText(heading).trim().toLowerCase() !== 'footnotes') continue
+    return (orderedList.content ?? []).map((item) => flattenContentText(item).trim())
   }
 
   return []
 }
 
-function flattenNodeText(node: JsonContent): string {
-  if (node.type === 'text') {
-    return node.text ?? ''
-  }
-
-  return node.content?.map(flattenNodeText).join(' ') ?? ''
-}
 </script>

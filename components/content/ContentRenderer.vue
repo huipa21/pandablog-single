@@ -31,6 +31,7 @@
 <script setup lang="ts">
 import type { JsonContent } from '~/types/content'
 import { normalizePresentationNode } from '~/utils/blockPresentation'
+import { flattenContentText } from '~/utils/contentText'
 
 const NodeImage = defineAsyncComponent(() => import('./NodeImage.vue'))
 const NodeCodeBlock = defineAsyncComponent(() => import('./NodeCodeBlock.vue'))
@@ -114,7 +115,7 @@ const nodeId = computed(() => {
     return undefined
   }
 
-  return slugifyHeading(flattenNodeText(props.node))
+  return slugifyHeading(flattenContentText(props.node))
 })
 
 const visibleDocChildren = computed(() => {
@@ -142,11 +143,4 @@ function headingTag(level: unknown) {
   return 'h2'
 }
 
-function flattenNodeText(node: JsonContent): string {
-  if (node.type === 'text') {
-    return node.text ?? ''
-  }
-
-  return node.content?.map(flattenNodeText).join(' ') ?? ''
-}
 </script>
