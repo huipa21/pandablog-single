@@ -1405,7 +1405,9 @@
       },
       "profile": {
         "title": "Profile",
-        "description": "Manage your public profile, account details, and password. Your profile avatar is shared by the public site and admin panel.",
+        "description": "Manage your profile and email. Your display name and avatar are shared by the public site and admin panel.",
+        "resetPassword": "Reset password",
+        "resetPasswordDescription": "Enter your current password and choose a new password. You will need to sign in again after resetting it.",
         "displayName": "Display name",
         "motto": "Motto",
         "avatar": "Avatar",

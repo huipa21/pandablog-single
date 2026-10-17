@@ -134,7 +134,52 @@ export default defineNuxtConfig({
   },
   vite: {
     optimizeDeps: {
-      include: ['highlight.js/lib/languages/latex', 'katex', 'striptags']
+      // Pre-bundle every editor dependency at startup. If Vite discovers one lazily
+      // (e.g. when the admin editor first opens), it re-optimizes mid-session and the
+      // page can load two copies of prosemirror-view, which crashes decoration
+      // rendering with "Cannot read properties of undefined (reading 'localsInner')".
+      include: [
+        'highlight.js/lib/languages/latex',
+        'katex',
+        'striptags',
+        'diff',
+        'mermaid',
+        'lowlight',
+        '@floating-ui/vue',
+        '@vue/devtools-core',
+        '@tiptap/core',
+        '@tiptap/pm/history',
+        '@tiptap/pm/model',
+        '@tiptap/pm/state',
+        '@tiptap/pm/view',
+        '@tiptap/starter-kit',
+        '@tiptap/suggestion',
+        '@tiptap/vue-3',
+        '@tiptap/vue-3/menus',
+        '@tiptap/extension-code',
+        '@tiptap/extension-code-block-lowlight',
+        '@tiptap/extension-color',
+        '@tiptap/extension-dropcursor',
+        '@tiptap/extension-font-family',
+        '@tiptap/extension-gapcursor',
+        '@tiptap/extension-highlight',
+        '@tiptap/extension-horizontal-rule',
+        '@tiptap/extension-image',
+        '@tiptap/extension-link',
+        '@tiptap/extension-list',
+        '@tiptap/extension-placeholder',
+        '@tiptap/extension-subscript',
+        '@tiptap/extension-superscript',
+        '@tiptap/extension-table',
+        '@tiptap/extension-table-cell',
+        '@tiptap/extension-table-header',
+        '@tiptap/extension-table-row',
+        '@tiptap/extension-text-align',
+        '@tiptap/extension-text-style',
+        '@nuxt/ui > @tiptap/extension-drag-handle-vue-3',
+        '@nuxt/ui > @tiptap/extension-mention',
+        '@nuxt/ui > @tiptap/markdown'
+      ]
     },
     plugins: [
       svgLoader({

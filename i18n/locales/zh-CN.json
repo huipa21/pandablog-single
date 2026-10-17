@@ -1393,7 +1393,9 @@
       },
       "profile": {
         "title": "个人资料",
-        "description": "管理公开个人资料、账户信息和密码。个人资料头像在公开站点和管理后台保持一致。",
+        "description": "管理个人资料和邮箱。显示名称和头像在公开站点和管理后台保持一致。",
+        "resetPassword": "重置密码",
+        "resetPasswordDescription": "输入当前密码并设置新密码。重置后需要重新登录。",
         "displayName": "显示名称",
         "motto": "签名",
         "avatar": "头像",

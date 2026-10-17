@@ -214,8 +214,9 @@ launch does not resize the current process heap.
 The admin username is always `admin`. The password is **not** stored in an environment variable —
 on a fresh database, open `/admin` and complete the setup wizard. Your password is hashed with
 argon2id and stored in SurrealDB. You can change it later from **Admin → Settings → Profile**,
-which also contains account details and the public profile. The profile avatar is shared by
-the public site and admin panel. Sign out is at the bottom of the admin sidebar.
+using the **Reset password** button to open the password dialog. Profile is the single editor
+for your display name, avatar, email, and public bio. The display name and avatar are shared
+by the public site and admin panel. Sign out is at the bottom of the admin sidebar.
 
 ### Upgrading from a multi-user build
 

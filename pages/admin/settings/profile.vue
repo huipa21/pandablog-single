@@ -15,9 +15,13 @@
         <USkeleton class="h-80" />
       </div>
 
-      <template v-else>
+      <template v-else-if="!error">
         <UFormField :label="t('admin.settings.profile.displayName')" name="owner_name">
-          <UInput v-model="form.owner_name" icon="i-lucide-user" />
+          <UInput v-model="form.owner_name" autocomplete="name" icon="i-lucide-user" />
+        </UFormField>
+
+        <UFormField :label="t('public.profile.email')" name="email">
+          <UInput v-model="form.email" type="email" autocomplete="email" icon="i-lucide-mail" />
         </UFormField>
 
         <UFormField :label="t('admin.settings.profile.motto')" name="owner_motto">
@@ -50,13 +54,16 @@
           </div>
         </UFormField>
 
-        <div class="flex justify-end">
+        <div class="flex flex-wrap justify-between gap-3">
+          <UButton type="button" variant="outline" color="neutral" icon="i-lucide-key-round" :disabled="saving" @click="resetPasswordOpen = true">
+            {{ t('admin.settings.profile.resetPassword') }}
+          </UButton>
           <UButton type="submit" icon="i-lucide-save" :loading="saving">{{ t('admin.settings.profile.saveProfile') }}</UButton>
         </div>
       </template>
     </form>
 
-    <AccountSettings />
+    <ResetPasswordDialog v-model:open="resetPasswordOpen" />
 
     <MediaPicker
       :open="mediaPickerOpen"
@@ -84,23 +91,31 @@
 import MediaPicker from '~/components/admin/media/MediaPicker.vue'
 import MediaSettingField from '~/components/admin/media/MediaSettingField.vue'
 import BlockEditor from '~/components/admin/editor/blocks/BlockEditor.vue'
-import AccountSettings from '~/components/admin/AccountSettings.vue'
+import ResetPasswordDialog from '~/components/admin/ResetPasswordDialog.vue'
 import type { JsonContent, MediaRecord } from '~/types/content'
 
 definePageMeta({ layout: 'admin' })
 
 const { t } = useI18n()
 const sessionFetch = useSessionFetch()
-const { data, pending, error } = await useAsyncData('admin-settings-profile', () => sessionFetch<{ settings: Record<string, unknown> }>('/api/admin/settings'))
+const { data, pending, error } = await useAsyncData('admin-settings-profile', async () => {
+  const [settings, account] = await Promise.all([
+    sessionFetch<{ settings: Record<string, unknown> }>('/api/admin/settings'),
+    sessionFetch<{ user: { email: string | null } }>('/api/auth/me')
+  ])
+  return { settings: settings.settings, email: account.user.email }
+})
 
 const form = reactive({
   owner_name: '',
+  email: '',
   owner_motto: '',
   owner_avatar: '',
   owner_bio_visible: true,
   owner_bio: emptyDoc()
 })
 const mediaPickerOpen = ref(false)
+const resetPasswordOpen = ref(false)
 const squareAvatarDialogOpen = ref(false)
 const pendingSquareAvatarUrl = ref('')
 const saving = ref(false)
@@ -109,6 +124,7 @@ const adminToast = useAdminToast()
 watch(data, (value) => {
   const settings = value?.settings ?? {}
   form.owner_name = textValue(settings.owner_name)
+  form.email = value?.email ?? ''
   form.owner_motto = textValue(settings.owner_motto)
   form.owner_avatar = textValue(settings.owner_avatar)
   form.owner_bio_visible = settings.owner_bio_visible !== false
@@ -116,9 +132,14 @@ watch(data, (value) => {
 }, { immediate: true })
 
 async function save() {
+  if (saving.value || pending.value || error.value) return
   saving.value = true
 
   try {
+    await $fetch('/api/auth/me', {
+      method: 'PUT',
+      body: { email: form.email }
+    })
     await $fetch('/api/admin/settings', {
       method: 'POST',
       body: {
@@ -131,7 +152,7 @@ async function save() {
     })
     await refreshNuxtData(['public-bootstrap', 'admin-layout-settings'])
     adminToast.success(t('admin.settings.profile.saved'))
-  } catch (err: any) {
+  } catch (err: unknown) {
     adminToast.error(err, t('admin.settings.profile.saveFailed'))
   } finally {
     saving.value = false

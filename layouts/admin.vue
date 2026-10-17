@@ -194,12 +194,10 @@ const ADMIN_POST_DISPLAY_MODE_KEY = 'admin_post_display_mode'
 interface AdminSessionUser {
   id: string
   username: string
-  display_name?: string | null
-  avatar_url?: string | null
 }
 
 const { t, locale, setLocale } = useI18n()
-const { siteName, siteLogo, siteFavicon } = useSiteSettings()
+const { siteName, siteLogo, siteFavicon, ownerName } = useSiteSettings()
 const { resolveMediaUrl } = useMediaUrl()
 const adminFavicon = computed(() => resolveMediaUrl(siteFavicon.value))
 useHead(() => ({
@@ -253,8 +251,7 @@ const hideSidebar = computed(() => route.meta.adminHideSidebar === true)
 const sidebarOpen = ref(false)
 const loggingOut = ref(false)
 const mainClass = computed(() => route.meta.adminWide === true ? 'min-w-0' : 'min-w-0 px-4 py-8 md:px-8')
-const accountUser = computed(() => authSession.value?.user ?? null)
-const accountName = computed(() => accountUser.value?.display_name || accountUser.value?.username || t('admin.layout.account'))
+const accountName = computed(() => ownerName.value || authSession.value?.user?.username || t('admin.nav.profile'))
 const adminToast = useAdminToast()
 const creatingQuickPost = ref(false)
 const quickNewItems = computed(() => [[

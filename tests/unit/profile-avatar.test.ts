@@ -47,7 +47,7 @@ beforeEach(() => {
   vi.stubGlobal('useThemeMode', () => ({ toggleIcon: vue.ref(''), toggleLabel: vue.ref(''), toggleThemeMode: vi.fn() }))
   vi.stubGlobal('usePostViewMode', () => ({ toggleIcon: vue.ref(''), toggleLabel: vue.ref(''), toggleViewMode: vi.fn() }))
   vi.stubGlobal('usePublicAuthSession', async () => ({
-    data: vue.computed(() => ({ loggedIn: loggedIn.value, user: { avatar_url: '/old-account-avatar.svg' } }))
+    data: vue.computed(() => ({ loggedIn: loggedIn.value, user: { display_name: 'Old account name', avatar_url: '/old-account-avatar.svg' } }))
   }))
   vi.stubGlobal('useRoute', () => ({ path: '/', fullPath: '/', query: {} }))
   vi.stubGlobal('useHead', vi.fn())
@@ -71,6 +71,8 @@ describe('unified profile avatar', () => {
     const html = await render(PublicLayout)
     expect(html.match(/src="https:\/\/media.example.test\/shared-avatar.svg"/g)).toHaveLength(2)
     expect(html).not.toContain('old-account-avatar')
+    expect(html).not.toContain('Old account name')
+    expect(html.match(/alt="Public Owner"/g)).toHaveLength(2)
     expect(html).not.toContain('admin.layout.myProfile')
     expect(html).not.toContain('admin.layout.signOut')
   })
