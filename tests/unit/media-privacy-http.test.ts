@@ -74,6 +74,12 @@ describe('real H3 media + shared-cache fixture (owned bytes only)', () => {
       expect(activeContent.headers.get('content-security-policy')).toContain('sandbox')
       expect(activeContent.headers.get('x-content-type-options')).toBe('nosniff')
       await activeContent.arrayBuffer()
+      state.records[0]!.original_name = '屏幕截图 2026-11-05 132318.png'
+      const unicodeName = await fetch(`${base}/media/${hash}`, {headers: {cookie: 'actor=fixture'}})
+      expect(unicodeName.status).toBe(200)
+      expect(unicodeName.headers.get('content-disposition')).toContain("filename*=UTF-8''%E5%B1%8F")
+      expect(await unicodeName.text()).toContain('private original')
+      state.records[0]!.original_name = 'original.txt'
       state.records[0]!.mime_type = 'text/plain'
       expect((await proxy(`/media/${hash}`)).status).toBe(404)
       expect((await proxy(`/api/media/variant/${hash}`, 'fixture')).body).toContain('private variant')

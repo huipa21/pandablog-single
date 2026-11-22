@@ -32,7 +32,7 @@ function applyContentTypeGuards(event: H3Event, mimeType: string, originalName: 
     // Belt-and-suspenders: even if forced to download, deny any execution.
     setResponseHeader(event, 'Content-Security-Policy', "default-src 'none'; sandbox")
   }
-  setResponseHeader(event, 'Content-Disposition', `${forceAttachment ? 'attachment' : 'inline'}; filename="${encodeHeaderValue(originalName)}"`)
+  setResponseHeader(event, 'Content-Disposition', mediaContentDisposition(originalName, forceAttachment))
 }
 
 
@@ -60,8 +60,8 @@ export async function serveOriginalMedia(event: H3Event, id: string, options: { 
   try {
     const stats = await mediaStatOriginal(file.original_path || '')
     const isDownload = getQuery(event).download === 'true'
-    setResponseHeader(event, 'Content-Length', stats.size)
     applyContentTypeGuards(event, file.mime_type || 'application/octet-stream', file.original_name, isDownload)
+    setResponseHeader(event, 'Content-Length', stats.size)
     return sendStream(event, mediaCreateOriginalStream(file.original_path || ''))
   } catch {
     throw createError({ statusCode: 404, message: 'File not found on disk' })
@@ -111,6 +111,17 @@ export async function serveMediaVariant(event: H3Event, id: string, size: string
   }
 }
 
-function encodeHeaderValue(value: string) {
-  return value.replace(/["\\\r\n]/g, '_')
+export function mediaContentDisposition(originalName: string, attachment: boolean) {
+  const name = originalName.replace(/[\x00-\x1f\x7f]/g, '_') || 'download'
+  const fallback = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_') || 'download'
+  return `${attachment ? 'attachment' : 'inline'}; filename="${fallback}"; filename*=UTF-8''${encodeRfc5987(name)}`
+}
+
+function encodeRfc5987(value: string) {
+  let encoded = ''
+  for (const byte of Buffer.from(value, 'utf8')) {
+    const char = String.fromCharCode(byte)
+    encoded += /[A-Za-z0-9!#$&+.^_`|~-]/.test(char) ? char : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`
+  }
+  return encoded
 }

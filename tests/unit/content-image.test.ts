@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contentImageSources, contentImageSrcset, fallbackContentImage } from '../../utils/contentImage'
+import { contentImageDimensions, contentImageSizes, contentImageSources, contentImageSrcset, fallbackContentImage } from '../../utils/contentImage'
 import type { MediaRecord } from '../../types/content'
 
 describe('automatic uncropped content images', () => {
@@ -17,6 +17,19 @@ describe('automatic uncropped content images', () => {
     expect(contentImageSrcset(contentImageSources(file, '/media/old'), '/media/new', size => size)).toBeUndefined()
     expect(contentImageSources({ ...file, variants: undefined }, '/media/example')).toBeNull()
     expect(contentImageSources({ ...file, variants: { medium: { width: 960, height: 576, path: 'rotated' } } } as MediaRecord, '/media/example')).toBeNull()
+  })
+  it('exposes intrinsic dimensions for responsive image layout', () => {
+    expect(contentImageDimensions({ naturalWidth: 1802, naturalHeight: 884 })).toEqual({ width: 1802, height: 884 })
+    expect(contentImageDimensions({ mediaNaturalWidth: '640', mediaNaturalHeight: '360' }, true)).toEqual({ width: 640, height: 360 })
+    expect(contentImageDimensions({ naturalWidth: 0, naturalHeight: 884 })).toBeNull()
+    expect(contentImageDimensions({ naturalWidth: 'bad', naturalHeight: 884 })).toBeNull()
+    expect(contentImageDimensions({}))
+      .toBeNull()
+  })
+  it('only uses sizes=auto when intrinsic dimensions can anchor the ratio', () => {
+    expect(contentImageSizes('full')).toContain('auto, ')
+    expect(contentImageSizes('full', false)).not.toContain('auto')
+    expect(contentImageSizes('small', false)).toContain('33.33vw')
   })
   it('removes srcset on error exactly once to retry original, not an endless loop', () => {
     const attributes = new Map([['src', '/media/example'], ['srcset', 'broken 900w'], ['sizes', '100vw']])

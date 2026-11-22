@@ -9,7 +9,9 @@
               v-if="showImagePreview"
               :src="resolvedMediaSrc"
               :srcset="srcset"
-              :sizes="srcset ? contentImageSizes(preset) : undefined"
+              :sizes="sizes"
+              :width="dimensions?.width"
+              :height="dimensions?.height"
               :alt="mediaAlt"
               :data-size-preset="preset"
               class="content-image block rounded-md"
@@ -39,7 +41,7 @@ import MediaFileList from './MediaFileList.vue'
 import { mediaFileKind, mediaFilesFromAttrs } from '~/utils/mediaFiles'
 import { extractMediaHash } from '~/composables/useMediaUrl'
 import { importedImagePreset, importedLayoutPreset, mediaFraction } from '~/utils/blockPresentation'
-import { contentImageSrcset, contentImageSizes, fallbackContentImage } from '~/utils/contentImage'
+import { contentImageDimensions, contentImageSrcset, contentImageSizes, fallbackContentImage } from '~/utils/contentImage'
 import '~/assets/css/block-presentation.css'
 
 const props = defineProps<{
@@ -54,6 +56,8 @@ const showImagePreview = computed(() => mediaItems.value.length === 1 && primary
 const mediaSrc = computed(() => primaryMediaItem.value?.src ?? '')
 const preset = computed(() => importedImagePreset(props.node.attrs ?? {}, true))
 const srcset = computed(() => extractMediaHash(mediaSrc.value) ? contentImageSrcset(props.node.attrs?.imageSources, mediaSrc.value, size => toPublicMediaVariantUrl(mediaSrc.value, size)) : undefined)
+const dimensions = computed(() => srcset.value ? contentImageDimensions(props.node.attrs, true) : null)
+const sizes = computed(() => srcset.value ? contentImageSizes(preset.value, Boolean(dimensions.value)) : undefined)
 const mediaAlt = computed(() => primaryMediaItem.value?.alt || String(props.node.attrs?.mediaAlt ?? ''))
 const mediaTitle = computed(() => String(props.node.attrs?.mediaTitle ?? ''))
 const mediaTitlePosition = computed(() => String(props.node.attrs?.mediaTitlePosition ?? 'bottom'))
