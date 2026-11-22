@@ -108,12 +108,14 @@ const props = withDefaults(defineProps<{
 
 const { t, locale } = useI18n()
 const isListView = computed(() => props.viewMode === 'list')
+const isSingleGridLayout = computed(() => !isListView.value && props.posts.length === 1)
 const resolvedEmptyTitle = computed(() => props.emptyTitle || t('public.postList.emptyTitle'))
 const resolvedEmptyDescription = computed(() => props.emptyDescription || t('public.postList.emptyDescription'))
 const layoutClasses = computed(() => [
   'min-w-0 w-full',
   isListView.value ? 'post-card-list' : 'post-card-grid',
-  !isListView.value && props.fixedColumns ? 'post-card-grid-fixed' : undefined
+  !isListView.value && props.fixedColumns ? 'post-card-grid-fixed' : undefined,
+  isSingleGridLayout.value ? 'post-card-grid--single' : undefined
 ])
 const skeletonCount = computed(() => isListView.value ? 4 : 6)
 const skeletonClasses = computed(() => [
@@ -226,12 +228,20 @@ function postExcerpt(post: PostListItem) {
 <style scoped>
 .post-card-grid {
   --post-card-grid-min: 20rem;
+  --post-card-grid-single-max: 24rem;
 
   gap: clamp(1rem, 1.5vw, 2rem);
   display: grid;
   align-items: start;
   justify-content: stretch;
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* A lone grid item should keep a normal tile width instead of being stretched
+   across the full row by auto-fit. */
+.post-card-grid.post-card-grid--single {
+  justify-content: start;
+  grid-template-columns: minmax(0, min(100%, var(--post-card-grid-single-max)));
 }
 
 .post-card-grid-item {
