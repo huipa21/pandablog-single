@@ -187,6 +187,7 @@ tests/unit/*
 !tests/fixtures/outbound/*.pem
 test-results
 .playwright-mcp/
+.pi/
 .vscode/
 .github/*
 !.github/workflows/
