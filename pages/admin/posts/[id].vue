@@ -37,6 +37,7 @@
             variant="soft"
             color="neutral"
             size="sm"
+            :disabled="isNewPost"
             :aria-label="t('admin.editor.versions')"
             @click="openVersionHistory"
           >
@@ -65,7 +66,7 @@
           </UButton>
           <UButton type="button" icon="i-lucide-plus" color="neutral" variant="soft" size="sm" class="md:hidden" :aria-label="t('admin.editor.inserter.open')" data-testid="mobile-open-inserter" @click="editorStore.openInserter()" />
           <UButton type="button" icon="i-lucide-panel-right-open" color="neutral" variant="soft" size="sm" class="md:hidden" :aria-label="t('admin.editor.sidebar.post')" data-testid="mobile-open-editor-sidebar" @click="rightPaneCollapsed = false" />
-          <UDropdownMenu :items="moreMenuItems">
+          <UDropdownMenu v-if="!isNewPost" :items="moreMenuItems">
             <UButton type="button" icon="i-lucide-ellipsis-vertical" color="neutral" variant="ghost" size="sm" />
           </UDropdownMenu>
         </div>
@@ -296,9 +297,17 @@ import type { CategoryRecord, JsonContent, PostRecord, PostStatus, TagRecord } f
 import type { AdminPostEditorForm } from '~/types/editor'
 import { docToDiffText } from '~/utils/contentDiffText'
 import { normalizeDocForComparison, normalizeDocForSave } from '~/utils/emptyBlocks'
+import { hasMeaningfulPostContent } from '~/utils/postContent'
 import { hasRenderedBlockChanges } from '~/utils/renderedBlockDiff'
 
-definePageMeta({ layout: 'admin', adminWide: true, adminHideSidebar: true })
+definePageMeta({
+  layout: 'admin',
+  adminWide: true,
+  adminHideSidebar: true,
+  // Recreate the editor when moving between posts or the blank /new shell so
+  // data and snapshot state cannot leak from the previous route.
+  key: route => route.path
+})
 
 type BlockEditorInstance = InstanceType<typeof BlockEditor> & { editor?: Editor, pickBlock?: (name: string) => void }
 const readFetchTimeoutMs = 10_000
@@ -308,6 +317,7 @@ const route = useRoute()
 const { t } = useI18n()
 const { formatAdminDateTime, formatAdminTime } = useAdminRegionalSettings()
 const id = computed(() => String(route.params.id))
+const isNewPost = computed(() => id.value === 'new')
 const apiPath = computed(() => `/api/admin/posts/${encodeURIComponent(id.value)}`)
 const sessionFetch = useSessionFetch()
 const savingAction = ref<'save-local' | 'save-db' | 'publish' | 'unpublish' | null>(null)
@@ -411,7 +421,7 @@ const [
   { data: categoriesData, refresh: refreshCategories },
   { data: tagsData, refresh: refreshTags }
 ] = await Promise.all([
-  useAsyncData(`admin-post-${id.value}`, () => fetchAdmin<PostRecord>(apiPath.value)),
+  useAsyncData(`admin-post-${id.value}`, () => isNewPost.value ? Promise.resolve(null) : fetchAdmin<PostRecord>(apiPath.value)),
   useAsyncData('admin-post-categories', () => fetchAdmin<{ categories: CategoryRecord[] }>('/api/admin/categories'), { default: () => ({ categories: [] }) }),
   useAsyncData('admin-post-tags', () => fetchAdmin<{ tags: TagRecord[] }>('/api/admin/tags'), { default: () => ({ tags: [] }) })
 ])
@@ -462,6 +472,11 @@ watch(post, (value) => {
   adminPostBreadcrumb.value = { id: value.id, slug: value.slug }
 }, { immediate: true })
 
+if (isNewPost.value) {
+  savedDbSnapshot.value = serializeDbPayload()
+  hasLoadedDbSnapshot.value = true
+}
+
 watch(() => form.title, (title) => {
   if (!slugManuallyEdited.value) {
     form.slug = slugifyTitle(title)
@@ -486,23 +501,35 @@ const hasUnsavedDbChanges = computed(() => {
   return serializeDbPayload() !== savedDbSnapshot.value
 })
 
+const hasPostContent = computed(() => hasMeaningfulPostContent(form.title, form.content))
+
 const isNewDraftShell = computed(() => {
-  if (route.query.new !== '1' || keepNewDraftShell.value || !hasLoadedDbSnapshot.value) {
+  if (isNewPost.value || route.query.new !== '1' || keepNewDraftShell.value || !hasLoadedDbSnapshot.value) {
     return false
   }
 
   const loadedPost = post.value
   return loadedPost?.status === 'draft'
-    && !loadedPost.title.trim()
-    && isEmptyDocContent(loadedPost.content_json)
+    && !hasMeaningfulPostContent(loadedPost.title, loadedPost.content_json)
 })
 
-const needsLeaveDecision = computed(() => hasUnsavedDbChanges.value || isNewDraftShell.value)
+const needsLeaveDecision = computed(() => {
+  if (isNewDraftShell.value) {
+    return true
+  }
+
+  return hasPostContent.value && hasUnsavedDbChanges.value
+})
 
 // ─── LOCAL SAVE (localStorage) ───────────────────────────────────────────────
 const localStorageKey = computed(() => `pb-post-local-${id.value}`)
 
 function saveLocal() {
+  if (!hasPostContent.value) {
+    clearLocalSave()
+    return false
+  }
+
   savingAction.value = 'save-local'
   try {
     const payload = {
@@ -536,7 +563,7 @@ function saveLocal() {
   }
 }
 
-function openPostView() {
+async function openPostView() {
   if (currentStatus.value === 'draft') {
     if (saveLocal()) {
       window.open(localPreviewLink.value, '_blank', 'noopener')
@@ -710,6 +737,7 @@ const localConflictSavedAtLabel = computed(() => {
 const localConflictServerSavedAtLabel = computed(() => post.value?.updated_at ? formatAdminDateTime(post.value.updated_at) : '')
 
 async function openVersionHistory() {
+  if (isNewPost.value) return
   rightPaneMode.value = 'versions'
   rightPaneCollapsed.value = false
   await loadVersions()
@@ -781,14 +809,18 @@ async function confirmPublishOrUpdate() {
 }
 
 async function save(nextStatus: PostStatus, action: 'save-db' | 'publish' | 'unpublish') {
+  if (!hasPostContent.value) {
+    return false
+  }
+
   const wasPublished = currentStatus.value === 'published'
   savingAction.value = action
   saveStatus.value = t('admin.editor.saving')
   saveStatusType.value = 'success'
 
   try {
-    const saved = await fetchAdmin<PostRecord>(apiPath.value, {
-      method: 'PUT',
+    const saved = await fetchAdmin<PostRecord>(isNewPost.value ? '/api/admin/posts' : apiPath.value, {
+      method: isNewPost.value ? 'POST' : 'PUT',
       body: {
         title: form.title,
         slug: form.slug,
@@ -835,6 +867,12 @@ async function save(nextStatus: PostStatus, action: 'save-db' | 'publish' | 'unp
     }
     saveStatusType.value = 'success'
     adminToast.success(postSaveTitle(action, wasPublished))
+    if (isNewPost.value) {
+      await navigateTo({
+        path: `/admin/posts/${encodeURIComponent(saved.id)}`,
+        query: route.query.new === '1' ? { new: '1' } : undefined
+      }, { replace: true })
+    }
     return true
   } catch (err: any) {
     adminToast.error(err, t('admin.editor.saveFailed'))
@@ -876,13 +914,21 @@ onMounted(() => {
   // version, surface a conflict diff and let the user choose instead of silently
   // overwriting the form content.
   const local = loadLocalSave()
-  if (local && post.value) {
-    if (localDraftDiffersFromServer(local)) {
-      pendingLocalDraft.value = local
-      localConflictOpen.value = true
-    } else {
-      restoreLocalDraft(local, false)
-      clearLocalSave()
+  if (local) {
+    if (isNewPost.value) {
+      if (hasMeaningfulPostContent(local.title, local.content_json)) {
+        restoreLocalDraft(local, false)
+      } else {
+        clearLocalSave()
+      }
+    } else if (post.value) {
+      if (localDraftDiffersFromServer(local)) {
+        pendingLocalDraft.value = local
+        localConflictOpen.value = true
+      } else {
+        restoreLocalDraft(local, false)
+        clearLocalSave()
+      }
     }
   }
 
@@ -929,6 +975,12 @@ function cancelLeave() {
 }
 
 async function discardAndLeave() {
+  if (isNewPost.value) {
+    clearLocalSave()
+    await continueLeaveNavigation()
+    return
+  }
+
   if (isNewDraftShell.value) {
     await discardNewDraftShellAndLeave()
     return
@@ -939,6 +991,17 @@ async function discardAndLeave() {
 }
 
 async function saveAndLeave() {
+  if (!hasPostContent.value) {
+    if (isNewDraftShell.value) {
+      await discardNewDraftShellAndLeave()
+      return
+    }
+
+    clearLocalSave()
+    await continueLeaveNavigation()
+    return
+  }
+
   const ok = await save(currentStatus.value, 'save-db')
   if (!ok) {
     return
@@ -1017,20 +1080,6 @@ function emptyDoc(): JsonContent {
     type: 'doc',
     content: [{ type: 'paragraph', content: [] }]
   }
-}
-
-function isEmptyDocContent(value: JsonContent | null | undefined) {
-  const children = Array.isArray(value?.content) ? value.content : []
-  if (children.length === 0) {
-    return true
-  }
-
-  return children.every((child) => {
-    if (child.type !== 'paragraph') {
-      return false
-    }
-    return !Array.isArray(child.content) || child.content.length === 0
-  })
 }
 
 function formatDate(value: string) {

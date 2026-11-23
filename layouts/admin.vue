@@ -457,11 +457,7 @@ async function createQuickPost() {
 
   creatingQuickPost.value = true
   try {
-    const post = await $fetch<{ id: string }>('/api/admin/posts', {
-      method: 'POST',
-      body: { title: '' }
-    })
-    await navigateTo({ path: `/admin/posts/${encodeURIComponent(post.id)}`, query: { new: '1' } })
+    await navigateTo({ path: '/admin/posts/new', query: { new: '1' } })
   } catch (error: unknown) {
     adminToast.error(error, t('admin.posts.createFailed'))
   } finally {

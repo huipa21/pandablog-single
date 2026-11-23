@@ -890,13 +890,7 @@ watch(totalPages, (next) => {
 async function createPost() {
   creating.value = true
   try {
-    const post = await $fetch<PostRecord>('/api/admin/posts', {
-      method: 'POST',
-      body: {
-        title: ''
-      }
-    })
-    await navigateTo({ path: `/admin/posts/${encodeURIComponent(post.id)}`, query: { new: '1' } })
+    await navigateTo({ path: '/admin/posts/new', query: { new: '1' } })
   } catch (error: any) {
     adminToast.error(error, t('admin.posts.createFailed'))
     creating.value = false

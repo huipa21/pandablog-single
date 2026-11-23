@@ -63,6 +63,7 @@ tests/unit/*
 !tests/unit/editor-inserter.test.ts
 !tests/unit/block-presentation.test.ts
 !tests/unit/emptyBlocks.test.ts
+!tests/unit/postContent.test.ts
 !tests/unit/content-image.test.ts
 !tests/unit/editor-presentation-browser.test.ts
 !tests/unit/editor-settings.test.ts
