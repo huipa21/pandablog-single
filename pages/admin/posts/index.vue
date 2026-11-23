@@ -481,14 +481,25 @@
 
 <script setup lang="ts">
 import type { CategoryRecord, PostRecord, PostStatus, PostVisibility, TagRecord } from '~/types/content'
+import {
+  ADMIN_POST_DEFAULT_SORT_DIR,
+  ADMIN_POST_DEFAULT_SORT_KEY,
+  ADMIN_POST_LIST_PREFS_STORAGE_KEY,
+  createDefaultAdminPostListPrefs,
+  parseAdminPostListPrefs,
+  type AdminPostListPrefs,
+  type AdminPostPerPage,
+  type AdminPostSortDir,
+  type AdminPostSortKey
+} from '~/utils/adminPostListPrefs'
 
 definePageMeta({ layout: 'admin' })
 
 
 type BulkIntent = 'archive' | 'hard-delete' | 'mixed'
-type SortKey = 'updated' | 'published' | 'title' | 'status' | 'visibility' | 'length'
-type SortDir = 'asc' | 'desc'
-type PerPageOption = '10' | '25' | '50' | '100'
+type SortKey = AdminPostSortKey
+type SortDir = AdminPostSortDir
+type PerPageOption = AdminPostPerPage
 
 type EditableField = 'title' | 'tags' | 'categories' | 'visibility' | 'status'
 
@@ -496,20 +507,25 @@ const { t } = useI18n()
 const { formatAdminDate, formatAdminNumber } = useAdminRegionalSettings()
 const sessionFetch = useSessionFetch()
 const creating = ref(false)
-const titleQuery = ref('')
-const tagSearch = ref('')
-const categorySearch = ref('')
-const selectedStatuses = ref<PostStatus[]>([])
-const selectedVisibilities = ref<PostVisibility[]>([])
-const lengthMin = ref('')
-const lengthMax = ref('')
-const publishedFrom = ref('')
-const publishedTo = ref('')
-const updatedFrom = ref('')
-const updatedTo = ref('')
-const sortKey = ref<SortKey>('updated')
-const sortDir = ref<SortDir>('desc')
-const perPage = ref<PerPageOption>('10')
+const adminPostListPrefs = useState<AdminPostListPrefs>(
+  'pb-admin-posts-list-prefs',
+  createDefaultAdminPostListPrefs
+)
+const initialPrefs = adminPostListPrefs.value
+const titleQuery = ref(initialPrefs.titleQuery)
+const tagSearch = ref(initialPrefs.tagSearch)
+const categorySearch = ref(initialPrefs.categorySearch)
+const selectedStatuses = ref<PostStatus[]>([...initialPrefs.selectedStatuses])
+const selectedVisibilities = ref<PostVisibility[]>([...initialPrefs.selectedVisibilities])
+const lengthMin = ref(initialPrefs.lengthMin)
+const lengthMax = ref(initialPrefs.lengthMax)
+const publishedFrom = ref(initialPrefs.publishedFrom)
+const publishedTo = ref(initialPrefs.publishedTo)
+const updatedFrom = ref(initialPrefs.updatedFrom)
+const updatedTo = ref(initialPrefs.updatedTo)
+const sortKey = ref<SortKey>(initialPrefs.sortKey)
+const sortDir = ref<SortDir>(initialPrefs.sortDir)
+const perPage = ref<PerPageOption>(initialPrefs.perPage)
 const perPageOptions = computed(() => [
   { label: t('admin.common.perPage', { count: 10 }), value: '10' },
   { label: t('admin.common.perPage', { count: 25 }), value: '25' },
@@ -526,8 +542,8 @@ const visibilityFilterOptions = computed<Array<{ value: PostVisibility, label: s
   { value: 'private', label: t('admin.posts.visibility.private') },
   { value: 'password', label: t('admin.posts.visibility.password') }
 ])
-const selectedTagIds = ref<string[]>([])
-const selectedCategoryIds = ref<string[]>([])
+const selectedTagIds = ref<string[]>([...initialPrefs.selectedTagIds])
+const selectedCategoryIds = ref<string[]>([...initialPrefs.selectedCategoryIds])
 const page = ref(1)
 const perPageNumber = computed(() => Number(perPage.value))
 const start = computed(() => (page.value - 1) * perPageNumber.value)
@@ -628,8 +644,73 @@ const filtersActive = computed(() => titleActive.value
   || lengthActive.value
   || publishedActive.value
   || updatedActive.value
-  || sortKey.value !== 'updated'
-  || sortDir.value !== 'desc')
+  || sortKey.value !== ADMIN_POST_DEFAULT_SORT_KEY
+  || sortDir.value !== ADMIN_POST_DEFAULT_SORT_DIR)
+
+const adminPostListPrefsSnapshot = computed<AdminPostListPrefs>(() => ({
+  titleQuery: titleQuery.value,
+  tagSearch: tagSearch.value,
+  categorySearch: categorySearch.value,
+  selectedStatuses: [...selectedStatuses.value],
+  selectedVisibilities: [...selectedVisibilities.value],
+  selectedTagIds: [...selectedTagIds.value],
+  selectedCategoryIds: [...selectedCategoryIds.value],
+  lengthMin: lengthMin.value,
+  lengthMax: lengthMax.value,
+  publishedFrom: publishedFrom.value,
+  publishedTo: publishedTo.value,
+  updatedFrom: updatedFrom.value,
+  updatedTo: updatedTo.value,
+  sortKey: sortKey.value,
+  sortDir: sortDir.value,
+  perPage: perPage.value
+}))
+
+function persistAdminPostListPrefs() {
+  if (!import.meta.client) {
+    return
+  }
+
+  adminPostListPrefs.value = adminPostListPrefsSnapshot.value
+  try {
+    localStorage.setItem(ADMIN_POST_LIST_PREFS_STORAGE_KEY, JSON.stringify(adminPostListPrefs.value))
+  } catch {}
+}
+
+function restoreAdminPostListPrefs() {
+  if (!import.meta.client) {
+    return
+  }
+
+  let raw: string | null = null
+  try {
+    raw = localStorage.getItem(ADMIN_POST_LIST_PREFS_STORAGE_KEY)
+  } catch {
+    return
+  }
+
+  const stored = parseAdminPostListPrefs(raw)
+  titleQuery.value = stored.titleQuery
+  tagSearch.value = stored.tagSearch
+  categorySearch.value = stored.categorySearch
+  selectedStatuses.value = [...stored.selectedStatuses]
+  selectedVisibilities.value = [...stored.selectedVisibilities]
+  selectedTagIds.value = [...stored.selectedTagIds]
+  selectedCategoryIds.value = [...stored.selectedCategoryIds]
+  lengthMin.value = stored.lengthMin
+  lengthMax.value = stored.lengthMax
+  publishedFrom.value = stored.publishedFrom
+  publishedTo.value = stored.publishedTo
+  updatedFrom.value = stored.updatedFrom
+  updatedTo.value = stored.updatedTo
+  sortKey.value = stored.sortKey
+  sortDir.value = stored.sortDir
+  perPage.value = stored.perPage
+}
+
+// Restore after hydration so SSR markup stays deterministic. The query watcher
+// then refetches with the stored filters instead of the server defaults.
+onMounted(restoreAdminPostListPrefs)
 
 const adminToast = useAdminToast()
 const bulkDeleting = ref(false)
@@ -765,6 +846,8 @@ function runForSinglePost(post: PostRecord, action: () => void | Promise<void>) 
   selectedIds.value = [post.id]
   void action()
 }
+
+watch(adminPostListPrefsSnapshot, persistAdminPostListPrefs)
 
 watch([
   titleQuery,
@@ -1249,8 +1332,8 @@ function clearFilters() {
   publishedTo.value = ''
   updatedFrom.value = ''
   updatedTo.value = ''
-  sortKey.value = 'updated'
-  sortDir.value = 'desc'
+  sortKey.value = ADMIN_POST_DEFAULT_SORT_KEY
+  sortDir.value = ADMIN_POST_DEFAULT_SORT_DIR
   page.value = 1
 }
 

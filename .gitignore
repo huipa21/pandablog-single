@@ -182,6 +182,7 @@ tests/unit/*
 !tests/unit/feature-flags-retired.test.ts
 !tests/unit/legacy-module-manifest.test.ts
 !tests/unit/public-features-settings.test.ts
+!tests/unit/adminPostListPrefs.test.ts
 !tests/fixtures/
 !tests/fixtures/outbound/
 !tests/fixtures/outbound/*.pem

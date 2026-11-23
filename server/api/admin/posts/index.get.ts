@@ -151,7 +151,7 @@ export default defineEventHandler(async (event) => {
 })
 
 function normalizeSort(value: unknown): AdminPostSort {
-  return Object.keys(sortOrders).includes(String(value)) ? value as AdminPostSort : 'updated_desc'
+  return Object.keys(sortOrders).includes(String(value)) ? value as AdminPostSort : 'published_desc'
 }
 
 function normalizeEnumList<T extends string>(value: unknown, allowed: T[]): T[] {
