@@ -749,7 +749,6 @@ headers and URI queries. Both edges' retention is operator-owned, not an app set
 This project does **not currently use GitHub CI**. Run verification locally on the Node
 version pinned in `.node-version`: `npm run lint`, `npm run lint:css`,
 `npm run typecheck`, `npm run test:unit`, and `git diff --check`.
-The optional `.github/workflows/ci.yml` template is not evidence that these checks ran.
 Real DB acceptance remains an explicit guarded command; see the
 [backend harness](docs/backend-hardening/harness.md). Production build/module, browser/proxy,
 Linux filesystem and constrained-load acceptance must be recorded separately, not inferred

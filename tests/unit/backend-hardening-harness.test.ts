@@ -5,15 +5,14 @@ import { boundedText, importStatementCount } from '../../scripts/backend-hardeni
 import { describe, expect, it } from 'vitest'
 import {
   assertFixtureTarget, assertOptIn, assertRuntime, assertSurrealVersion,
-  createOwnedStorage, fixtureEnvironment, startFixture, SURREAL_VERSION
+  createOwnedStorage, fixtureEnvironment, startFixture
 } from '../../scripts/backend-hardening/fixture'
 import { barrier, manualClock } from '../helpers/backend-hardening'
 import { writeSqlFixture } from '../../scripts/backend-hardening/generate'
 
 describe('backend harness fails closed', () => {
-  it('keeps the CI/runtime pin synchronized', async () => {
+  it('keeps the runtime pin synchronized', async () => {
     expect((await readFile(new URL('../../.node-version', import.meta.url), 'utf8')).trim()).toBe('22.22.0')
-    expect(await readFile(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8')).toContain(`releases/download/v${SURREAL_VERSION}/surreal-v${SURREAL_VERSION}.linux-amd64.tgz`)
   })
 
   it('requires deliberate opt-in, pinned Node and the approved stable DB minor', () => {

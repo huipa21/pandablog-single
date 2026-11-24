@@ -125,11 +125,6 @@ describe('hardening project acceptance fails closed', () => {
     expect(pkg.scripts['hardening:acceptance:check']).toContain('--check --stage=predeploy')
     expect(pkg.scripts['hardening:acceptance:check:postdeploy']).toContain('--check --stage=postdeploy')
     expect(Object.keys(pkg.scripts).some(key => key.startsWith('release:'))).toBe(false)
-    const workflow = await readFile(join(root, '.github/workflows/ci.yml'), 'utf8')
-    expect(workflow).not.toContain('fetch-depth: 0')
-    expect(workflow).not.toMatch(/npm run (?:release:|hardening:acceptance:)/)
-    expect(workflow).toContain('npm run test:unit')
-    expect(workflow).toContain('npm run test:backend:integration')
   })
 
   it('reads bounded regular evidence files and checks digests without following links or reading configured data', async () => {
