@@ -22,6 +22,8 @@ export class WriteBarrier {
   private generation = 0
   private readonly cachePrefix = randomBytes(16).toString('hex')
   cacheGeneration() {return `${this.cachePrefix}:${this.generation}`}
+  /** Invalidate every public cache key after a lexicon edit so word cards refresh. */
+  bumpCacheGeneration() {this.generation++}
   private exclusiveStarted = false
   private exclusiveFlights = 0
   private stopping = false

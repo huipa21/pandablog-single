@@ -22,7 +22,8 @@ const BLOCK_ID_NODE_TYPES = [
   'mermaid',
   'blockMath',
   'annotationBlock',
-  'footnotesBlock'
+  'footnotesBlock',
+  'wordCard'
 ]
 
 export const BlockId = Extension.create({

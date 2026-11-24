@@ -130,6 +130,22 @@ DEFINE FIELD IF NOT EXISTS updated_at ON block TYPE datetime DEFAULT time::now()
 DEFINE INDEX IF NOT EXISTS block_type ON block FIELDS type;
 DEFINE INDEX IF NOT EXISTS block_text_fts ON TABLE block COLUMNS text FULLTEXT ANALYZER blog_analyzer BM25 HIGHLIGHTS;
 
+-- ============ WORDS (personal lexicon used by wordCard blocks) ============
+-- Post content stores only the word anchor + selected sense ids; this table is
+-- the single source of truth so edits propagate to every card.
+DEFINE TABLE IF NOT EXISTS word SCHEMAFULL PERMISSIONS NONE;
+DEFINE FIELD IF NOT EXISTS headword ON word TYPE string;
+DEFINE FIELD IF NOT EXISTS headword_key ON word TYPE string;
+DEFINE FIELD IF NOT EXISTS language ON word TYPE string;
+DEFINE FIELD IF NOT EXISTS pronunciation ON word TYPE option<string> DEFAULT NONE;
+DEFINE FIELD IF NOT EXISTS senses ON word TYPE array DEFAULT [];
+DEFINE FIELD IF NOT EXISTS archived ON word TYPE bool DEFAULT false;
+DEFINE FIELD IF NOT EXISTS created_at ON word TYPE datetime DEFAULT time::now();
+DEFINE FIELD IF NOT EXISTS updated_at ON word TYPE datetime DEFAULT time::now();
+DEFINE INDEX IF NOT EXISTS word_headword_unique ON TABLE word FIELDS language, headword_key UNIQUE;
+DEFINE INDEX IF NOT EXISTS word_headword_fts ON TABLE word COLUMNS headword FULLTEXT ANALYZER blog_analyzer BM25 HIGHLIGHTS;
+DEFINE INDEX IF NOT EXISTS word_archived ON TABLE word FIELDS archived;
+
 -- ============ SEARCH TERMS (fuzzy-search word list) ============
 -- One row per (scope, word); record id is [scope, term]. `df` counts the source
 -- records containing the word. Only Latin/Greek/Cyrillic words of 4-30 chars.

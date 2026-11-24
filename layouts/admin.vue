@@ -318,6 +318,7 @@ const navSections = computed(() => {
       { to: '/admin/posts', label: t('admin.nav.posts'), icon: 'i-lucide-file-text' },
       { to: '/admin/categories', label: t('admin.nav.categories'), icon: 'i-lucide-folder' },
       { to: '/admin/tags', label: t('admin.nav.tags'), icon: 'i-lucide-tags' },
+      { to: '/admin/words', label: t('admin.nav.words'), icon: 'i-lucide-book-marked' },
       { to: '/admin/media', label: t('admin.nav.mediaLibrary'), icon: 'i-lucide-image' }
     ]
   })

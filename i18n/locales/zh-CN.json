@@ -32,7 +32,8 @@
       "backups": "备份",
       "analytics": "分析",
       "analyticsSettings": "分析",
-      "security": "安全"
+      "security": "安全",
+      "words": "单词"
     },
     "layout": {
       "openNavigation": "打开导航",
@@ -73,7 +74,8 @@
       "lastPage": "最后一页",
       "pageOf": "第 {page} 页，共 {total} 页",
       "perPage": "{count} / 页",
-      "required": "{label} 为必填项。"
+      "required": "{label} 为必填项。",
+      "retry": "重试"
     },
     "dashboard": {
       "eyebrow": "工作区",
@@ -1207,6 +1209,34 @@
         "customLabelTitle": "自定义标签",
         "customLabelPlaceholder": "留空则使用文章标题",
         "showCover": "显示封面图片"
+      },
+      "wordCard": {
+        "settingsTitle": "单词卡片",
+        "pickerTitle": "选择单词",
+        "pickerDescription": "选择单词和本文要显示的义项。",
+        "searchPlaceholder": "搜索词库",
+        "senseCount": "义项：{count}",
+        "noMatches": "没有匹配的单词。",
+        "noWords": "词库还没有单词。",
+        "manageWords": "管理词库",
+        "editWord": "编辑单词",
+        "changeWord": "更换单词",
+        "chooseWord": "选择单词",
+        "chooseWordHint": "在左侧选择一个单词。",
+        "selectSenses": "本文显示的义项",
+        "selectAll": "全选",
+        "selectNone": "全不选",
+        "targetLanguage": "翻译",
+        "targetLanguageHint": "没有对应翻译的义项只显示源语言释义。",
+        "noTranslation": "不显示翻译",
+        "selectedCount": "已选择 {selected}/{total}",
+        "insert": "插入卡片",
+        "emptyTitle": "未选择单词",
+        "emptyDescription": "从词库选择一个单词，在这里显示卡片。",
+        "unavailableTitle": "单词不可用",
+        "unavailableDescription": "该单词已被删除。请更换单词或恢复它。",
+        "noSelectedSenses": "这张卡片所选的义项已不存在。请重新选择义项。",
+        "loadFailed": "无法加载词库。"
       }
     },
     "logs": {
@@ -1724,6 +1754,61 @@
         "enableSafety": "明确启用还原安全快照",
         "saveFailed": "备份设置保存失败"
       }
+    },
+    "words": {
+      "eyebrow": "词库",
+      "title": "单词",
+      "description": "可在多篇文章中复用的释义、义项与翻译。",
+      "newWord": "新建单词",
+      "editWord": "编辑单词",
+      "searchPlaceholder": "搜索单词",
+      "statusAll": "全部",
+      "statusActive": "使用中",
+      "statusArchived": "已归档",
+      "headword": "单词",
+      "pronunciation": "读音",
+      "senses": "义项",
+      "updated": "更新时间",
+      "archivedBadge": "已归档",
+      "archive": "归档",
+      "restore": "恢复",
+      "loadFailed": "无法加载词库。",
+      "createFailed": "无法创建单词。",
+      "saveFailed": "无法保存单词。",
+      "archiveFailed": "无法归档单词。",
+      "restoreFailed": "无法恢复单词。",
+      "created": "单词已创建。",
+      "saved": "单词已保存。",
+      "archived": "单词已归档。",
+      "restored": "单词已恢复。",
+      "noWordsTitle": "还没有单词",
+      "noWordsDescription": "创建第一个单词，然后在文章中插入单词卡片。",
+      "noMatchesTitle": "没有匹配的单词",
+      "noMatchesDescription": "试试其他关键词。",
+      "archiveTitle": "归档单词？",
+      "archiveDescription": "归档“{name}”？已有卡片会保留保存的单词作为回退显示，直到重新修复。",
+      "editorDescription": "释义在这里维护，并同步更新所有使用该单词的卡片。",
+      "sourceLanguage": "源语言",
+      "headwordPlaceholder": "例如 terminate",
+      "pronunciationPlaceholder": "例如 /ˈtɜːmɪneɪt/",
+      "sensesTitle": "义项",
+      "sensesHint": "每个不同含义单独一条。每条义项有自己的词性、例句和辨析。",
+      "addSense": "添加义项",
+      "removeSense": "删除",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "partOfSpeech": "词性",
+      "definition": "释义",
+      "definitionPlaceholder": "用源语言解释含义。",
+      "example": "例句",
+      "examplePlaceholder": "可选例句。",
+      "note": "辨析",
+      "notePlaceholder": "可选的语域、搭配或近义词辨析。",
+      "translation": "中文翻译",
+      "translationPlaceholder": "可选翻译……",
+      "saveWord": "保存单词",
+      "headwordRequired": "请输入单词。",
+      "definitionRequired": "至少添加一条带释义的义项。"
     }
   },
   "public": {
@@ -2007,6 +2092,12 @@
       "openPost": "打开文章：{title}",
       "unavailable": "该文章已不可用。",
       "unavailableWithTitle": "该文章已不可用：{title}"
+    },
+    "wordCard": {
+      "archived": "已归档",
+      "noSelectedSenses": "所选义项已不存在。",
+      "unavailableTitle": "单词不可用",
+      "unavailableDescription": "这张卡片对应的单词已不可用。"
     }
   }
 }

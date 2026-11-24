@@ -49,7 +49,8 @@ const BLOCKS: BlockExpectation[] = [
   { name: 'footnotes', editorSelector: '.pb-prose .footnotes-block', publicSelector: '.pb-prose .footnotes-block' },
   { name: 'annotation-block', editorSelector: '.pb-prose .annotation-block[data-lang="cmn"]', publicSelector: '.pb-prose .annotation-block[data-lang="cmn"]' },
   { name: 'ruby-unit-inline', editorSelector: '.pb-prose .ruby-unit[data-lang="cmn"] rt:has-text("nǐ")', publicSelector: '.pb-prose .ruby-unit[data-lang="cmn"] rt:has-text("nǐ")' },
-  { name: 'inline-math', editorSelector: '.pb-prose .inline-math .katex', publicSelector: '.pb-prose .inline-math .katex' }
+  { name: 'inline-math', editorSelector: '.pb-prose .inline-math .katex', publicSelector: '.pb-prose .inline-math .katex' },
+  { name: 'word-card', editorSelector: '.pb-prose .pb-word-card:has-text("Terminate")', publicSelector: '.pb-prose .pb-word-card:has-text("Terminate")' }
 ]
 
 const imageSvg = encodeURIComponent(`
@@ -79,11 +80,34 @@ test('all blocks render with matching DOM contract on editor and public surfaces
   const slug = `all-blocks-parity-${Date.now()}`
   const footnoteId = `note-${Date.now()}`
 
+  const wordHeadword = `Terminate ${Date.now()}`
+  const wordResp = await context.request.post('/api/admin/words', {
+    data: {
+      headword: wordHeadword,
+      language: 'en',
+      pronunciation: '/ˈtɜːmɪneɪt/',
+      senses: [{
+        partOfSpeech: 'verb',
+        definition: 'bring to an end',
+        example: 'terminate the contract',
+        note: 'formal',
+        translations: { 'zh-CN': '终止' }
+      }]
+    }
+  })
+  expect(wordResp.status(), `word seed failed: ${await wordResp.text()}`).toBe(200)
+  const wordId = String((await wordResp.json()).word?.id ?? '')
+  expect(wordId).toBeTruthy()
+
   const contentJson = {
     type: 'doc',
     content: [
       { type: 'paragraph', content: [{ type: 'text', text: 'Paragraph block' }, { type: 'text', text: '1', marks: [{ type: 'footnote', attrs: { id: footnoteId, index: 1 } }] }] },
       { type: 'paragraph', content: [{ type: 'text', text: 'Inline formula ' }, { type: 'inlineMath', attrs: { latex: 'E = mc^2' } }, { type: 'text', text: ' inside text.' }] },
+      {
+        type: 'wordCard',
+        attrs: { wordId, headword: wordHeadword, senseIds: [], targetLanguage: 'zh-CN', blockWidth: 'content' }
+      },
       { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Heading two' }] },
       { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Bullet item' }] }] }] },
       { type: 'orderedList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Ordered item' }] }] }] },

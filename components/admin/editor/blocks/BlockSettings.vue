@@ -8,6 +8,7 @@
       </div>
       <DialogueSettings v-if="blockName === 'dialogueBlock'" :editor="editor" :attrs="attrs" :pos="selected?.pos ?? null" @update="updateAttrs" />
       <PostEmbedSettings v-else-if="blockName === 'postEmbed' || blockName === 'postEmbedInline'" :editor="editor" :attrs="attrs" :pos="selected?.pos ?? null" />
+      <WordCardSettings v-else-if="blockName === 'wordCard'" :editor="editor" :attrs="attrs" :pos="selected?.pos ?? null" />
       <div v-else class="space-y-3 rounded-md border border-[var(--pb-divider)] p-3" :data-code-settings="blockName === 'codeBlock' ? '' : undefined">
         <UFormField v-for="field in fields" :key="field.key" :label="label(field.label)">
           <USelect v-if="field.items" class="w-full" :model-value="String(attrs[field.key] ?? field.fallback ?? '')" :items="field.items" @update:model-value="setField(field, $event)" />
@@ -51,6 +52,7 @@ import type { Editor } from '@tiptap/core'
 import type { JsonContent } from '~/types/content'
 import DialogueSettings from './DialogueSettings.vue'
 import PostEmbedSettings from './PostEmbedSettings.vue'
+import WordCardSettings from './WordCardSettings.vue'
 import { CODE_BLOCK_LANGUAGES } from '~/extensions/codeBlockEnhanced'
 import { DIFF_BLOCK_LANGUAGES, normalizeDiffLanguage } from '~/utils/diffBlock'
 import { normalizeBlockPresentation, layoutPreset, imagePreset } from '~/utils/blockPresentation'

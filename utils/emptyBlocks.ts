@@ -51,6 +51,12 @@ export function isEmptyBlock(node: JsonContent | null | undefined): boolean {
     return stringAttr(node.attrs?.postId).length === 0
   }
 
+  // A word card without an anchor would render as a permanent "choose word"
+  // placeholder — drop it like other empty atoms.
+  if (node.type === 'wordCard') {
+    return stringAttr(node.attrs?.wordId).length === 0
+  }
+
   return false
 }
 

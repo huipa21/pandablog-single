@@ -32,7 +32,8 @@
       "backups": "Backups",
       "analytics": "Analytics",
       "analyticsSettings": "Analytics",
-      "security": "Security"
+      "security": "Security",
+      "words": "Words"
     },
     "layout": {
       "openNavigation": "Open navigation",
@@ -73,7 +74,8 @@
       "lastPage": "Last page",
       "pageOf": "Page {page} of {total}",
       "perPage": "{count} / page",
-      "required": "{label} is required."
+      "required": "{label} is required.",
+      "retry": "Retry"
     },
     "dashboard": {
       "eyebrow": "Workspace",
@@ -1207,6 +1209,34 @@
         "customLabelTitle": "Custom label",
         "customLabelPlaceholder": "Leave blank to use the post title",
         "showCover": "Show cover image"
+      },
+      "wordCard": {
+        "settingsTitle": "Word card",
+        "pickerTitle": "Choose a word",
+        "pickerDescription": "Pick a word and the senses this post should show.",
+        "searchPlaceholder": "Search the lexicon",
+        "senseCount": "Senses: {count}",
+        "noMatches": "No words match.",
+        "noWords": "No words in the lexicon yet.",
+        "manageWords": "Manage words",
+        "editWord": "Edit word",
+        "changeWord": "Change word",
+        "chooseWord": "Choose word",
+        "chooseWordHint": "Select a word on the left.",
+        "selectSenses": "Senses in this post",
+        "selectAll": "All",
+        "selectNone": "None",
+        "targetLanguage": "Translation",
+        "targetLanguageHint": "Senses without a gloss fall back to the source definition.",
+        "noTranslation": "No translation",
+        "selectedCount": "{selected} of {total} selected",
+        "insert": "Insert card",
+        "emptyTitle": "No word selected",
+        "emptyDescription": "Pick a word from the lexicon to render its card here.",
+        "unavailableTitle": "Word unavailable",
+        "unavailableDescription": "This word was removed. Choose another word or restore it.",
+        "noSelectedSenses": "The senses selected for this card no longer exist. Choose senses again.",
+        "loadFailed": "Could not load the lexicon."
       }
     },
     "logs": {
@@ -1724,6 +1754,61 @@
         "enableSafety": "Explicitly enable restore safety",
         "saveFailed": "Failed to save backup settings"
       }
+    },
+    "words": {
+      "eyebrow": "Lexicon",
+      "title": "Words",
+      "description": "Definitions, senses and glosses reused across posts.",
+      "newWord": "New word",
+      "editWord": "Edit word",
+      "searchPlaceholder": "Search words",
+      "statusAll": "All",
+      "statusActive": "Active",
+      "statusArchived": "Archived",
+      "headword": "Headword",
+      "pronunciation": "Pronunciation",
+      "senses": "Senses",
+      "updated": "Updated",
+      "archivedBadge": "Archived",
+      "archive": "Archive",
+      "restore": "Restore",
+      "loadFailed": "Could not load the lexicon.",
+      "createFailed": "Could not create the word.",
+      "saveFailed": "Could not save the word.",
+      "archiveFailed": "Could not archive the word.",
+      "restoreFailed": "Could not restore the word.",
+      "created": "Word created.",
+      "saved": "Word saved.",
+      "archived": "Word archived.",
+      "restored": "Word restored.",
+      "noWordsTitle": "No words yet",
+      "noWordsDescription": "Create the first word to use it in a post card.",
+      "noMatchesTitle": "No matching words",
+      "noMatchesDescription": "Try a different search.",
+      "archiveTitle": "Archive word?",
+      "archiveDescription": "Archive \"{name}\"? Existing cards keep the saved headword until repaired.",
+      "editorDescription": "Definitions live here and update every card that uses this word.",
+      "sourceLanguage": "Source language",
+      "headwordPlaceholder": "e.g. terminate",
+      "pronunciationPlaceholder": "e.g. /ˈtɜːmɪneɪt/",
+      "sensesTitle": "Senses",
+      "sensesHint": "Add one entry per distinct meaning. Each sense keeps its own part of speech, example and nuance.",
+      "addSense": "Add sense",
+      "removeSense": "Remove",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "partOfSpeech": "Part of speech",
+      "definition": "Definition",
+      "definitionPlaceholder": "Explain the meaning in the source language.",
+      "example": "Example",
+      "examplePlaceholder": "Optional example sentence.",
+      "note": "Note",
+      "notePlaceholder": "Optional nuance, register or contrast.",
+      "translation": "Chinese gloss",
+      "translationPlaceholder": "Optional translation...",
+      "saveWord": "Save word",
+      "headwordRequired": "Enter a headword.",
+      "definitionRequired": "Add at least one sense with a definition."
     }
   },
   "public": {
@@ -2007,6 +2092,12 @@
       "openPost": "Open post: {title}",
       "unavailable": "This post is unavailable.",
       "unavailableWithTitle": "This post is unavailable: {title}"
+    },
+    "wordCard": {
+      "archived": "Archived",
+      "noSelectedSenses": "The selected senses are no longer available.",
+      "unavailableTitle": "Word unavailable",
+      "unavailableDescription": "The word behind this card is no longer available."
     }
   }
 }

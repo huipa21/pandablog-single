@@ -189,6 +189,15 @@
           @confirm="confirmPostEmbedPick"
         />
 
+        <WordCardPicker
+          :open="wordCardPickerOpen"
+          :initial-word-id="wordCardInitial.wordId"
+          :initial-sense-ids="wordCardInitial.senseIds"
+          :initial-target-language="wordCardInitial.targetLanguage"
+          @update:open="wordCardPickerOpen = $event"
+          @confirm="confirmWordCardPick"
+        />
+
         <AdminPromptDialog
           :open="mediaTextRemoteUrlDialogOpen"
           :title="t('admin.editor.blocks.remoteMediaTitle')"
@@ -249,6 +258,7 @@ import { BlockquoteEnhanced } from '~/extensions/blockquoteEnhanced'
 import { CustomHtmlNode } from '~/extensions/customHtml'
 import { VideoEmbedNode } from '~/extensions/videoEmbed'
 import { PostEmbedInlineNode, PostEmbedNode } from '~/extensions/postEmbed'
+import { WordCardNode } from '~/extensions/wordCard'
 import { ImageBlockNode } from '~/extensions/imageBlock'
 import { MediaTextNode } from '~/extensions/mediaText'
 import { FilesBlockNode } from '~/extensions/filesBlock'
@@ -263,6 +273,8 @@ import CustomHtmlNodeView from '~/components/admin/editor/CustomHtmlNodeView.vue
 import VideoEmbedNodeView from '~/components/admin/editor/VideoEmbedNodeView.vue'
 import PostEmbedNodeView from '~/components/admin/editor/PostEmbedNodeView.vue'
 import PostEmbedInlineNodeView from '~/components/admin/editor/PostEmbedInlineNodeView.vue'
+import WordCardNodeView from '~/components/admin/editor/WordCardNodeView.vue'
+import WordCardPicker from '~/components/admin/editor/WordCardPicker.vue'
 import ImageBlockNodeView from '~/components/admin/editor/ImageBlockNodeView.vue'
 import MediaTextNodeView from '~/components/admin/editor/MediaTextNodeView.vue'
 import FilesBlockNodeView from '~/components/admin/editor/FilesBlockNodeView.vue'
@@ -438,6 +450,14 @@ const postEmbedPickerOpen = ref(false)
 const postEmbedTargetPos = ref<number | null>(null)
 const postEmbedInline = ref(false)
 const postEmbedPendingPos = ref<number | null>(null)
+// Word card picker state — target node pos for "change word", or pending
+// insertion pos for a fresh card. Initial values seed the picker selection.
+const wordCardPickerOpen = ref(false)
+const wordCardTargetPos = ref<number | null>(null)
+const wordCardPendingPos = ref<number | null>(null)
+const wordCardInitial = ref<{ wordId: string, senseIds: string[], targetLanguage: string }>({
+  wordId: '', senseIds: [], targetLanguage: ''
+})
 const mediaTextRemoteUrlDialogOpen = ref(false)
 let lastCtrlAStamp = 0
 
@@ -564,6 +584,11 @@ const editor = useEditor({
     PostEmbedInlineNode.extend({
       addNodeView() {
         return VueNodeViewRenderer(PostEmbedInlineNodeView)
+      }
+    }),
+    WordCardNode.extend({
+      addNodeView() {
+        return VueNodeViewRenderer(WordCardNodeView)
       }
     }),
     ImageBlockNode.extend({
@@ -999,6 +1024,7 @@ onMounted(() => {
   window.addEventListener('resize', handleViewportChange)
   editorContainer.value?.addEventListener('mediatext-pick', onMediaTextPickEvent as EventListener)
   editorContainer.value?.addEventListener('postembed-pick', onPostEmbedPickEvent as EventListener)
+  editorContainer.value?.addEventListener('wordcard-pick', onWordCardPickEvent as EventListener)
   if (editor.value) {
     scheduleTrackActiveBlock(editor.value)
   }
@@ -1010,6 +1036,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', handleViewportChange)
   editorContainer.value?.removeEventListener('mediatext-pick', onMediaTextPickEvent as EventListener)
   editorContainer.value?.removeEventListener('postembed-pick', onPostEmbedPickEvent as EventListener)
+  editorContainer.value?.removeEventListener('wordcard-pick', onWordCardPickEvent as EventListener)
   if (trackFrame !== null) {
     window.cancelAnimationFrame(trackFrame)
   }
@@ -1887,6 +1914,11 @@ function insertBlockAtPosition(name: string, pos: number) {
     return
   }
 
+  if (name === 'wordCard') {
+    openWordCardPicker({ pendingPos: safePos })
+    return
+  }
+
   if (name === 'image') {
     pendingImageInsertPos.value = safePos
     mediaPickerOpen.value = true
@@ -1950,6 +1982,12 @@ function insertBlockReplacingRange(name: string, range: { from: number; to: numb
     return
   }
 
+  if (name === 'wordCard') {
+    ed.chain().focus().deleteRange(range).run()
+    openWordCardPicker({ pendingPos: range.from })
+    return
+  }
+
   if (name === 'image') {
     pendingImageInsertPos.value = range.from
     ed.chain().focus().deleteRange(range).run()
@@ -2006,6 +2044,81 @@ function confirmEmbedUrl(rawUrl: string) {
     attrs: embed
   }).run()
   closeEmbedUrlDialog()
+}
+
+// ─── WORD CARD ──────────────────────────────────────────────────────────────
+
+function openWordCardPicker(options: { targetPos?: number, pendingPos?: number, wordId?: string, senseIds?: string[], targetLanguage?: string } = {}) {
+  wordCardTargetPos.value = options.targetPos ?? null
+  wordCardPendingPos.value = options.pendingPos ?? null
+  wordCardInitial.value = {
+    wordId: options.wordId ?? '',
+    senseIds: options.senseIds ?? [],
+    targetLanguage: options.targetLanguage ?? ''
+  }
+  wordCardPickerOpen.value = true
+}
+
+function closeWordCardPicker() {
+  wordCardPickerOpen.value = false
+  wordCardTargetPos.value = null
+  wordCardPendingPos.value = null
+  wordCardInitial.value = { wordId: '', senseIds: [], targetLanguage: '' }
+}
+
+function confirmWordCardPick(value: { word: { id: string, headword: string }, senseIds: string[], targetLanguage: string }) {
+  const ed = editor.value
+  const targetPos = wordCardTargetPos.value
+  const pendingPos = wordCardPendingPos.value
+  if (!ed || !value.word.id) {
+    closeWordCardPicker()
+    return
+  }
+
+  const attrs = {
+    wordId: value.word.id,
+    headword: value.word.headword,
+    senseIds: value.senseIds,
+    targetLanguage: value.targetLanguage
+  }
+
+  if (targetPos !== null) {
+    const node = ed.state.doc.nodeAt(targetPos)
+    if (node && node.type.name === 'wordCard') {
+      const merged = { ...node.attrs, ...attrs }
+      ed.view.dispatch(ed.state.tr.setNodeMarkup(targetPos, undefined, merged))
+      editorStore.mergeSelectedBlockAttrs(merged)
+    }
+  } else {
+    const pos = pendingPos ?? editableDocumentEndPos(ed)
+    const safePos = normalizeStandaloneBlockInsertPos(ed, pos, 'wordCard')
+    ed.chain().focus().insertContentAt(safePos, {
+      type: 'wordCard',
+      attrs: { ...attrs, blockWidth: 'content' }
+    }).run()
+  }
+
+  closeWordCardPicker()
+}
+
+/** NodeView request ("choose/change word") bubbled from inside the editor. */
+function onWordCardPickEvent(event: Event) {
+  const detail = (event as CustomEvent<{ nodePos: number | null }>).detail
+  if (!detail) return
+  const nodePos = typeof detail.nodePos === 'number' ? detail.nodePos : null
+  if (nodePos !== null) {
+    const node = editor.value?.state.doc.nodeAt(nodePos)
+    if (node && node.type.name === 'wordCard') {
+      openWordCardPicker({
+        targetPos: nodePos,
+        wordId: String(node.attrs.wordId ?? ''),
+        senseIds: Array.isArray(node.attrs.senseIds) ? node.attrs.senseIds.map(String) : [],
+        targetLanguage: String(node.attrs.targetLanguage ?? '')
+      })
+      return
+    }
+  }
+  openWordCardPicker({})
 }
 
 // ─── POST EMBED ─────────────────────────────────────────────────────────────

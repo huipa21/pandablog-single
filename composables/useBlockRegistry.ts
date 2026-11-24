@@ -363,6 +363,22 @@ const blockDefinitions: BlockDefinition[] = [
     })
   },
   {
+    name: 'wordCard',
+    title: 'Word card',
+    description: 'Insert a vocabulary card from the word lexicon.',
+    icon: 'i-lucide-book-marked',
+    category: 'text',
+    keywords: ['word', 'vocabulary', 'lexicon', 'dictionary', 'definition', 'language', 'word card'],
+    implemented: true,
+    supports: { spacing: true },
+    createContent: () => ({
+      type: 'wordCard',
+      attrs: {
+        wordId: '', headword: '', senseIds: [], targetLanguage: '', blockWidth: 'content'
+      }
+    })
+  },
+  {
     name: 'customHtml',
     title: 'Custom HTML',
     description: 'Write raw HTML with a preview.',

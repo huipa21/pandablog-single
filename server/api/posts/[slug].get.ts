@@ -4,6 +4,7 @@ import { firstRow, queryRows, recordIdPart, stringifyRecordId } from '../../util
 import { evaluatePostAccess, sanitizePost, type PostVisibility } from '../../utils/visibility'
 import { buildDocFromBlocks, loadBlocksForPost } from '../../utils/blocks'
 import { resolvePostEmbedsInDoc } from '../../utils/postEmbedResolve'
+import { resolveWordCardsInDoc } from '../../utils/words'
 import { isOwner } from '../../utils/auth'
 import { PUBLIC_POST_CACHE_SECONDS, publicCacheKey, shouldBypassPublicCache } from '../../utils/public-cache'
 
@@ -84,9 +85,11 @@ async function handlePost(event: Parameters<typeof shouldBypassPublicCache>[0]) 
     loadTagsForPost(db, normalized.id)
   ])
 
+  const doc = await resolvePostEmbedsInDoc(db, buildDocFromBlocks(blocks), owner)
+
   return {
     ...normalized,
-    content_json: await resolvePostEmbedsInDoc(db, buildDocFromBlocks(blocks), owner),
+    content_json: await resolveWordCardsInDoc(db, doc),
     blocks,
     tags
   }

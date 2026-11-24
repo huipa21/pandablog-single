@@ -90,6 +90,12 @@ export function flattenNodeText(node: JsonContent | null | undefined): string {
     return flattenFileItems(node.attrs?.files)
   }
 
+  if (node.type === 'wordCard') {
+    // Definitions live in the lexicon and are deliberately not duplicated into
+    // the post; index the snapshot headword so the card stays discoverable.
+    return stringAttr(node.attrs?.headword)
+  }
+
   if (node.type === 'customHtml') {
     // Index only the visible text of custom HTML, never the raw markup. This
     // keeps tag/attribute noise out of the FTS index and avoids storing author

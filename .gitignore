@@ -23,6 +23,7 @@ storage/.recovery-archive/
 storage/logs/*
 storage/rate-limit/*
 storage/setup-authority.json
+storage/setup-authority.json.*
 storage/setup-authority.json.*.tmp
 !storage/uploads/.gitkeep
 !storage/downloads/.gitkeep
@@ -63,6 +64,8 @@ tests/unit/*
 !tests/unit/editor-inserter.test.ts
 !tests/unit/block-presentation.test.ts
 !tests/unit/emptyBlocks.test.ts
+!tests/unit/post-embed.test.ts
+!tests/unit/word-card.test.ts
 !tests/unit/postContent.test.ts
 !tests/unit/content-image.test.ts
 !tests/unit/editor-presentation-browser.test.ts
