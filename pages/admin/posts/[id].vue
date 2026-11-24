@@ -121,7 +121,13 @@
               <div class="pb-editor-gutter" aria-hidden="true" />
             </div>
 
-            <BlockEditor ref="blockEditorRef" v-model="form.content" :use-inline-inserter="true" />
+            <BlockEditor
+              ref="blockEditorRef"
+              v-model="form.content"
+              :use-inline-inserter="true"
+              :current-post-id="post?.id ?? `post:${id}`"
+              :current-slug="form.slug"
+            />
           </form>
         </div>
       </main>

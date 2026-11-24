@@ -18,14 +18,14 @@
         <section
           role="dialog"
           aria-modal="true"
-          :aria-label="t('admin.editor.relatedPost.title')"
+          :aria-label="headingTitle"
           data-testid="related-post-picker"
           class="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-xl flex-col overflow-hidden rounded-[var(--pb-radius-card-outer)] border border-[var(--pb-card-border)] bg-[var(--pb-card-bg)] shadow-[var(--pb-shadow-lg)] sm:max-h-[85vh]"
         >
           <header class="flex items-start justify-between gap-3 border-b border-[var(--pb-divider)] px-4 py-3">
             <div class="min-w-0">
-              <h2 class="text-base font-semibold text-[var(--pb-text)]">{{ t('admin.editor.relatedPost.title') }}</h2>
-              <p class="text-xs text-[var(--pb-text-subtle)]">{{ t('admin.editor.relatedPost.description') }}</p>
+              <h2 class="text-base font-semibold text-[var(--pb-text)]">{{ headingTitle }}</h2>
+              <p class="text-xs text-[var(--pb-text-subtle)]">{{ headingDescription }}</p>
             </div>
             <UButton type="button" icon="i-lucide-x" size="xs" color="neutral" variant="ghost" :aria-label="t('admin.common.close')" @click="close" />
           </header>
@@ -90,11 +90,14 @@ const props = withDefaults(defineProps<{
   currentSlug?: string
   selectedIds?: string[]
   selectedSlugs?: string[]
+  /** 'related' — the publish-time related-post picker. 'embed' — insert an embedded post node. */
+  mode?: 'related' | 'embed'
 }>(), {
   currentPostId: '',
   currentSlug: '',
   selectedIds: () => [],
-  selectedSlugs: () => []
+  selectedSlugs: () => [],
+  mode: 'related'
 })
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -102,6 +105,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const isEmbedMode = computed(() => props.mode === 'embed')
+const headingTitle = computed(() => isEmbedMode.value ? t('admin.editor.postEmbed.pickerTitle') : t('admin.editor.relatedPost.title'))
+const headingDescription = computed(() => isEmbedMode.value ? t('admin.editor.postEmbed.pickerDescription') : t('admin.editor.relatedPost.description'))
 const query = ref('')
 const loading = ref(false)
 const results = ref<PostSuggestion[]>([])
@@ -111,7 +117,7 @@ const visibleResults = computed(() => results.value
   .filter(item => item.id !== props.currentPostId && item.slug !== props.currentSlug)
   .map(item => ({
     ...item,
-    added: props.selectedIds.includes(item.id) || props.selectedSlugs.includes(item.slug)
+    added: !isEmbedMode.value && (props.selectedIds.includes(item.id) || props.selectedSlugs.includes(item.slug))
   })))
 
 watch(() => props.open, (next) => {

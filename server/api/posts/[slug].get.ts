@@ -3,6 +3,7 @@ import { normalizePost } from '../../utils/content'
 import { firstRow, queryRows, recordIdPart, stringifyRecordId } from '../../utils/surrealResult'
 import { evaluatePostAccess, sanitizePost, type PostVisibility } from '../../utils/visibility'
 import { buildDocFromBlocks, loadBlocksForPost } from '../../utils/blocks'
+import { resolvePostEmbedsInDoc } from '../../utils/postEmbedResolve'
 import { isOwner } from '../../utils/auth'
 import { PUBLIC_POST_CACHE_SECONDS, publicCacheKey, shouldBypassPublicCache } from '../../utils/public-cache'
 
@@ -85,7 +86,7 @@ async function handlePost(event: Parameters<typeof shouldBypassPublicCache>[0]) 
 
   return {
     ...normalized,
-    content_json: buildDocFromBlocks(blocks),
+    content_json: await resolvePostEmbedsInDoc(db, buildDocFromBlocks(blocks), owner),
     blocks,
     tags
   }

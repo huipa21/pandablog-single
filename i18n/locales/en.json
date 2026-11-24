@@ -355,6 +355,10 @@
       "contentLength": {
         "chars": "{count} chars",
         "words": "{count} words"
+      },
+      "embedUsage": {
+        "warning": "\"{title}\" is embedded in: {posts}",
+        "noticeTitle": "Post referenced elsewhere"
       }
     },
     "taxonomy": {
@@ -1186,6 +1190,23 @@
         "remoteMediaDescription": "Use a remote image, video, audio, or document URL for this Media + Text block.",
         "remoteMediaUrl": "Remote media URL",
         "useUrl": "Use URL"
+      },
+      "postEmbed": {
+        "pickerTitle": "Embed a post",
+        "pickerDescription": "Search and pick a post to reference here. Unlike related posts, this inserts an embedded card into the content.",
+        "unavailable": "This post is no longer available.",
+        "changePost": "Change post",
+        "emptyTitle": "Embedded post",
+        "emptyDescription": "Pick a post to embed as a reference card.",
+        "choosePost": "Choose post",
+        "inlinePlaceholder": "Post link",
+        "settingsTitle": "Embedded post",
+        "display": "Display",
+        "display_card": "Card",
+        "display_inline": "Inline",
+        "customLabelTitle": "Custom label",
+        "customLabelPlaceholder": "Leave blank to use the post title",
+        "showCover": "Show cover image"
       }
     },
     "logs": {
@@ -1981,6 +2002,11 @@
       "passwordMismatch": "Passwords do not match",
       "passwordChanged": "Password changed. Your sessions have been revoked; please sign in again.",
       "passwordChangeFailed": "Could not change password"
+    },
+    "postEmbed": {
+      "openPost": "Open post: {title}",
+      "unavailable": "This post is unavailable.",
+      "unavailableWithTitle": "This post is unavailable: {title}"
     }
   }
 }

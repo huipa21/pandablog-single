@@ -773,6 +773,58 @@ const confirmDialog = reactive({
   ids: [] as string[]
 })
 
+interface EmbedUsagePost {
+  id: string
+  title: string
+  slug: string
+  status: string
+}
+
+/** Posts (non-archived) that embed the given post as a card or inline chip. */
+async function fetchEmbedUsage(ids: string[]): Promise<Map<string, EmbedUsagePost[]>> {
+  const usage = new Map<string, EmbedUsagePost[]>()
+  await Promise.all(ids.map(async (id) => {
+    try {
+      const response = await $fetch<{ posts: EmbedUsagePost[] }>(`/api/admin/posts/${encodeURIComponent(id)}/usage`)
+      if (response.posts?.length) usage.set(id, response.posts)
+    } catch {
+      // Non-fatal: the action may proceed without the warning.
+    }
+  }))
+  return usage
+}
+
+function embedUsageLines(ids: string[], usage: Map<string, EmbedUsagePost[]>): string[] {
+  return ids.flatMap((id) => {
+    const referenced = usage.get(id)
+    if (!referenced?.length) return []
+    const targetTitle = posts.value.find((post) => post.id === id)?.title || id
+    const referencing = referenced.map((post) => post.title).join(', ')
+    return [t('admin.posts.embedUsage.warning', { title: targetTitle, posts: referencing })]
+  })
+}
+
+function appendUsageWarning(ids: string[]) {
+  const signature = [...ids].sort().join('|')
+  void fetchEmbedUsage(ids).then((usage) => {
+    if (!usage.size) return
+    if (!confirmDialog.open || [...confirmDialog.ids].sort().join('|') !== signature) return
+    const lines = embedUsageLines(ids, usage)
+    if (lines.length) {
+      confirmDialog.description = `${confirmDialog.description}\n\n${lines.join('\n')}`
+    }
+  })
+}
+
+/** Post-save notice for status changes to draft — non-blocking info toast. */
+async function notifyEmbedUsage(ids: string[]) {
+  const usage = await fetchEmbedUsage(ids)
+  const lines = embedUsageLines(ids, usage)
+  if (lines.length) {
+    adminToast.info(t('admin.posts.embedUsage.noticeTitle'), lines.join('\n'))
+  }
+}
+
 const actionsMenuItems = computed(() => [[
   ...(isArchivedView.value
     ? [
@@ -1020,6 +1072,10 @@ async function saveCurrentCell(options: { close?: boolean } = {}) {
     }
     await refresh()
 
+    if (cell.field === 'status' && (draft.status === 'draft' || draft.status === 'archived')) {
+      void notifyEmbedUsage([cell.postId])
+    }
+
     if (options.close) {
       editingCell.value = null
     }
@@ -1155,6 +1211,7 @@ function openBulkActionDialog() {
   confirmDialog.confirmLabel = confirmLabel
   confirmDialog.confirmColor = confirmColor
   confirmDialog.ids = uniqueIds
+  appendUsageWarning(uniqueIds)
 }
 
 function deletePermanentlySelected() {
@@ -1172,6 +1229,7 @@ function deletePermanentlySelected() {
   confirmDialog.confirmLabel = t(count === 1 ? 'admin.posts.bulk.deleteOneConfirm' : 'admin.posts.bulk.deleteManyConfirm', { count })
   confirmDialog.confirmColor = 'error'
   confirmDialog.ids = uniqueIds
+  appendUsageWarning(uniqueIds)
 }
 
 async function restoreSelected() {
@@ -1197,6 +1255,7 @@ async function restoreSelected() {
     }
     await refresh()
     adminToast.success(t('admin.posts.bulk.restoredTitle'), t('admin.posts.bulk.restoredDescription', { count: uniqueIds.length }))
+    void notifyEmbedUsage(uniqueIds)
   } catch (error: any) {
     adminToast.error(error, t('admin.posts.bulk.restoreFailed'))
   } finally {

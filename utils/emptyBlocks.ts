@@ -45,6 +45,12 @@ export function isEmptyBlock(node: JsonContent | null | undefined): boolean {
     return !hasItems(node.attrs?.files)
   }
 
+  // Embedded post nodes without an anchor would render as a permanent
+  // "choose post" placeholder — drop them like other empty atoms.
+  if (node.type === 'postEmbed' || node.type === 'postEmbedInline') {
+    return stringAttr(node.attrs?.postId).length === 0
+  }
+
   return false
 }
 

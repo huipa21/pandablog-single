@@ -15,6 +15,8 @@
     <NodeAnnotationBlock v-else-if="node.type === 'annotationBlock'" :node="node" />
     <NodeCustomHtml v-else-if="node.type === 'customHtml'" :node="node" />
     <NodeVideoEmbed v-else-if="node.type === 'videoEmbed'" :node="node" />
+    <NodePostEmbed v-else-if="node.type === 'postEmbed'" :node="node" />
+    <NodePostEmbedInline v-else-if="node.type === 'postEmbedInline'" :node="node" />
     <NodeMediaText v-else-if="node.type === 'mediaText'" :node="node" />
     <NodeFilesBlock v-else-if="node.type === 'filesBlock'" :node="node" />
     <NodeColumnsBlock v-else-if="node.type === 'columnsBlock'" :node="node" />
@@ -43,6 +45,8 @@ const NodeInlineMath = defineAsyncComponent(() => import('./NodeInlineMath.vue')
 const NodeAnnotationBlock = defineAsyncComponent(() => import('./NodeAnnotationBlock.vue'))
 const NodeCustomHtml = defineAsyncComponent(() => import('./NodeCustomHtml.vue'))
 const NodeVideoEmbed = defineAsyncComponent(() => import('./NodeVideoEmbed.vue'))
+const NodePostEmbed = defineAsyncComponent(() => import('./NodePostEmbed.vue'))
+const NodePostEmbedInline = defineAsyncComponent(() => import('./NodePostEmbedInline.vue'))
 const NodeMediaText = defineAsyncComponent(() => import('./NodeMediaText.vue'))
 const NodeFilesBlock = defineAsyncComponent(() => import('./NodeFilesBlock.vue'))
 const NodeColumnsBlock = defineAsyncComponent(() => import('./NodeColumnsBlock.vue'))

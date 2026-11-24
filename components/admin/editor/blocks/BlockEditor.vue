@@ -180,6 +180,15 @@
           </div>
         </AdminPromptDialog>
 
+        <RelatedPostPicker
+          :open="postEmbedPickerOpen"
+          mode="embed"
+          :current-post-id="props.currentPostId ?? ''"
+          :current-slug="props.currentSlug ?? ''"
+          @update:open="postEmbedPickerOpen = $event"
+          @confirm="confirmPostEmbedPick"
+        />
+
         <AdminPromptDialog
           :open="mediaTextRemoteUrlDialogOpen"
           :title="t('admin.editor.blocks.remoteMediaTitle')"
@@ -239,6 +248,7 @@ import { DiffBlockNode } from '~/extensions/diffBlock'
 import { BlockquoteEnhanced } from '~/extensions/blockquoteEnhanced'
 import { CustomHtmlNode } from '~/extensions/customHtml'
 import { VideoEmbedNode } from '~/extensions/videoEmbed'
+import { PostEmbedInlineNode, PostEmbedNode } from '~/extensions/postEmbed'
 import { ImageBlockNode } from '~/extensions/imageBlock'
 import { MediaTextNode } from '~/extensions/mediaText'
 import { FilesBlockNode } from '~/extensions/filesBlock'
@@ -251,6 +261,8 @@ import DialogueLineNodeView from '~/components/admin/editor/DialogueLineNodeView
 import DiffBlockNodeView from '~/components/admin/editor/DiffBlockNodeView.vue'
 import CustomHtmlNodeView from '~/components/admin/editor/CustomHtmlNodeView.vue'
 import VideoEmbedNodeView from '~/components/admin/editor/VideoEmbedNodeView.vue'
+import PostEmbedNodeView from '~/components/admin/editor/PostEmbedNodeView.vue'
+import PostEmbedInlineNodeView from '~/components/admin/editor/PostEmbedInlineNodeView.vue'
 import ImageBlockNodeView from '~/components/admin/editor/ImageBlockNodeView.vue'
 import MediaTextNodeView from '~/components/admin/editor/MediaTextNodeView.vue'
 import FilesBlockNodeView from '~/components/admin/editor/FilesBlockNodeView.vue'
@@ -268,6 +280,7 @@ import SlashCommandMenu from '~/components/admin/editor/SlashCommandMenu.vue'
 import BlockInserterPanel from '~/components/admin/editor/blocks/BlockInserterPanel.vue'
 import BlockToolbar from '~/components/admin/editor/BlockToolbar.vue'
 import MediaPicker from '~/components/admin/media/MediaPicker.vue'
+import RelatedPostPicker from '~/components/admin/editor/RelatedPostPicker.vue'
 import { useAutoScroll } from '~/composables/editor/useAutoScroll'
 import { useMediaUrl } from '~/composables/useMediaUrl'
 import { mediaRecordToFileItem } from '~/utils/mediaFiles'
@@ -292,6 +305,8 @@ const props = defineProps<{
   useInlineInserter?: boolean
   readonly?: boolean
   ariaLabelledby?: string
+  currentPostId?: string
+  currentSlug?: string
 }>()
 
 const emit = defineEmits<{
@@ -417,6 +432,12 @@ const editHtmlInitialValue = ref('')
 const pendingEditHtml = ref<{ from: number; to: number; html: string } | null>(null)
 const embedUrlDialogOpen = ref(false)
 const pendingEmbedInsertPos = ref<number | null>(null)
+// Embedded post picker state — target node pos for "change post", or pending
+// insertion pos for a fresh insert. `inline` targets the chip variant.
+const postEmbedPickerOpen = ref(false)
+const postEmbedTargetPos = ref<number | null>(null)
+const postEmbedInline = ref(false)
+const postEmbedPendingPos = ref<number | null>(null)
 const mediaTextRemoteUrlDialogOpen = ref(false)
 let lastCtrlAStamp = 0
 
@@ -533,6 +554,16 @@ const editor = useEditor({
     VideoEmbedNode.extend({
       addNodeView() {
         return VueNodeViewRenderer(VideoEmbedNodeView)
+      }
+    }),
+    PostEmbedNode.extend({
+      addNodeView() {
+        return VueNodeViewRenderer(PostEmbedNodeView)
+      }
+    }),
+    PostEmbedInlineNode.extend({
+      addNodeView() {
+        return VueNodeViewRenderer(PostEmbedInlineNodeView)
       }
     }),
     ImageBlockNode.extend({
@@ -967,6 +998,7 @@ onMounted(() => {
   window.addEventListener('scroll', handleViewportChange, true)
   window.addEventListener('resize', handleViewportChange)
   editorContainer.value?.addEventListener('mediatext-pick', onMediaTextPickEvent as EventListener)
+  editorContainer.value?.addEventListener('postembed-pick', onPostEmbedPickEvent as EventListener)
   if (editor.value) {
     scheduleTrackActiveBlock(editor.value)
   }
@@ -977,6 +1009,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleViewportChange, true)
   window.removeEventListener('resize', handleViewportChange)
   editorContainer.value?.removeEventListener('mediatext-pick', onMediaTextPickEvent as EventListener)
+  editorContainer.value?.removeEventListener('postembed-pick', onPostEmbedPickEvent as EventListener)
   if (trackFrame !== null) {
     window.cancelAnimationFrame(trackFrame)
   }
@@ -1849,6 +1882,11 @@ function insertBlockAtPosition(name: string, pos: number) {
     return
   }
 
+  if (name === 'postEmbed') {
+    openPostEmbedPicker({ pendingPos: safePos, inline: false })
+    return
+  }
+
   if (name === 'image') {
     pendingImageInsertPos.value = safePos
     mediaPickerOpen.value = true
@@ -1903,6 +1941,12 @@ function insertBlockReplacingRange(name: string, range: { from: number; to: numb
   if (name === 'embed') {
     ed.chain().focus().deleteRange(range).run()
     insertEmbedAtPosition(range.from)
+    return
+  }
+
+  if (name === 'postEmbed') {
+    ed.chain().focus().deleteRange(range).run()
+    openPostEmbedPicker({ pendingPos: range.from, inline: false })
     return
   }
 
@@ -1962,6 +2006,72 @@ function confirmEmbedUrl(rawUrl: string) {
     attrs: embed
   }).run()
   closeEmbedUrlDialog()
+}
+
+// ─── POST EMBED ─────────────────────────────────────────────────────────────
+
+/**
+ * Open the embedded post picker. `targetPos` swaps the post on an existing
+ * node; `pendingPos` inserts a fresh card (or inline chip) after confirmation.
+ */
+function openPostEmbedPicker(options: { targetPos?: number, pendingPos?: number, inline?: boolean } = {}) {
+  postEmbedTargetPos.value = options.targetPos ?? null
+  postEmbedPendingPos.value = options.pendingPos ?? null
+  postEmbedInline.value = options.inline === true
+  postEmbedPickerOpen.value = true
+}
+
+function confirmPostEmbedPick(value: { id: string, slug: string, title: string }) {
+  const ed = editor.value
+  postEmbedPickerOpen.value = false
+  if (!ed || !value.id) {
+    postEmbedTargetPos.value = null
+    postEmbedPendingPos.value = null
+    postEmbedInline.value = false
+    return
+  }
+
+  const attrs = {
+    postId: value.id,
+    slug: value.slug,
+    title: value.title,
+    blockWidth: 'content',
+    showCover: true
+  }
+
+  const targetPos = postEmbedTargetPos.value
+  if (targetPos !== null) {
+    const node = ed.state.doc.nodeAt(targetPos)
+    if (node && (node.type.name === 'postEmbed' || node.type.name === 'postEmbedInline')) {
+      const merged = { ...node.attrs, postId: attrs.postId, slug: attrs.slug, title: attrs.title }
+      ed.view.dispatch(ed.state.tr.setNodeMarkup(targetPos, undefined, merged))
+      editorStore.mergeSelectedBlockAttrs(merged)
+    }
+  } else {
+    const pos = postEmbedPendingPos.value ?? editableDocumentEndPos(ed)
+    const safePos = normalizeStandaloneBlockInsertPos(ed, pos, 'postEmbed')
+    const type = postEmbedInline.value ? 'postEmbedInline' : 'postEmbed'
+    ed.chain().focus().insertContentAt(safePos, { type, attrs }).run()
+  }
+
+  postEmbedTargetPos.value = null
+  postEmbedPendingPos.value = null
+  postEmbedInline.value = false
+}
+
+/** NodeView request ("choose/change post") bubbled from inside the editor. */
+function onPostEmbedPickEvent(event: Event) {
+  const detail = (event as CustomEvent<{ nodePos: number | null }>).detail
+  if (!detail) return
+  const nodePos = typeof detail.nodePos === 'number' ? detail.nodePos : null
+  if (nodePos !== null) {
+    const node = editor.value?.state.doc.nodeAt(nodePos)
+    if (node && (node.type.name === 'postEmbed' || node.type.name === 'postEmbedInline')) {
+      openPostEmbedPicker({ targetPos: nodePos })
+      return
+    }
+  }
+  openPostEmbedPicker({})
 }
 
 // ─── DRAG AND DROP ───────────────────────────────────────────────────────────

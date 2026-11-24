@@ -355,6 +355,10 @@
       "contentLength": {
         "chars": "{count} 个字符",
         "words": "{count} 个词"
+      },
+      "embedUsage": {
+        "warning": "“{title}”被以下文章嵌入引用：{posts}",
+        "noticeTitle": "文章在其他地方被引用"
       }
     },
     "taxonomy": {
@@ -1186,6 +1190,23 @@
         "remoteMediaDescription": "为此媒体加文字区块使用远程图片、视频、音频或文档 URL。",
         "remoteMediaUrl": "远程媒体 URL",
         "useUrl": "使用 URL"
+      },
+      "postEmbed": {
+        "pickerTitle": "嵌入文章",
+        "pickerDescription": "搜索并选择一篇文章作为此处引用。与关联文章不同，这会在内容中插入嵌入卡片。",
+        "unavailable": "该文章已不可用。",
+        "changePost": "更换文章",
+        "emptyTitle": "嵌入文章",
+        "emptyDescription": "选择一篇文章作为引用卡片嵌入。",
+        "choosePost": "选择文章",
+        "inlinePlaceholder": "文章链接",
+        "settingsTitle": "嵌入文章",
+        "display": "显示方式",
+        "display_card": "卡片",
+        "display_inline": "行内",
+        "customLabelTitle": "自定义标签",
+        "customLabelPlaceholder": "留空则使用文章标题",
+        "showCover": "显示封面图片"
       }
     },
     "logs": {
@@ -1981,6 +2002,11 @@
       "passwordMismatch": "两次输入的密码不一致",
       "passwordChanged": "密码已修改。您的会话已撤销，请重新登录。",
       "passwordChangeFailed": "无法修改密码"
+    },
+    "postEmbed": {
+      "openPost": "打开文章：{title}",
+      "unavailable": "该文章已不可用。",
+      "unavailableWithTitle": "该文章已不可用：{title}"
     }
   }
 }

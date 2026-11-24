@@ -346,6 +346,23 @@ const blockDefinitions: BlockDefinition[] = [
     })
   },
   {
+    name: 'postEmbed',
+    title: 'Post',
+    description: 'Embed another post as a linked card or inline chip.',
+    icon: 'i-lucide-newspaper',
+    category: 'embed',
+    keywords: ['post', 'embed', 'reference', 'link', 'related', 'card'],
+    implemented: true,
+    supports: { spacing: true },
+    createContent: () => ({
+      type: 'postEmbed',
+      attrs: {
+        postId: '', slug: '', title: '',
+        customLabel: '', blockWidth: 'content', showCover: true
+      }
+    })
+  },
+  {
     name: 'customHtml',
     title: 'Custom HTML',
     description: 'Write raw HTML with a preview.',
